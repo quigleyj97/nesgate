@@ -1,0 +1,8 @@
+#!/bin/zsh
+
+set -x
+set -e
+
+pushd $1
+python -m util.run_cocotb clock_divider cores.clock_divider ./cores/clock_divider/clock_divider.vhdl
+popd

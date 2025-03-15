@@ -1,0 +1,40 @@
+#!/bin/zsh
+
+set -x
+set -e
+
+rm -rf build
+mkdir -p build
+
+BASE_DIR=`realpath .`
+BUILD_DIR=$BASE_DIR/build
+
+CONTAINER_RUNNER=docker
+TRELLIS_CONTAINER_NAME=hdlc/prjtrellis
+TRELLIS_NEXTPNR_CONTAINER_NAME=hdlc/nextpnr:ecp5
+GHDL_YOSYS_CONTAINER_NAME=hdlc/ghdl:yosys
+CONTAINER_ARGS="--rm -it -v $BASE_DIR:/src -w /src/build"
+YOSYS="$CONTAINER_RUNNER run $CONTAINER_ARGS $GHDL_YOSYS_CONTAINER_NAME yosys"
+NEXTPNR="$CONTAINER_RUNNER run $CONTAINER_ARGS $TRELLIS_NEXTPNR_CONTAINER_NAME nextpnr-ecp5"
+ECPPACK="$CONTAINER_RUNNER run $CONTAINER_ARGS $TRELLIS_CONTAINER_NAME ecppack"
+
+for core in cores/*; do
+    pushd $core
+    ./analyze $BUILD_DIR
+    ./test $BASE_DIR
+    popd
+done
+
+# TODO: Move this into a separate, target-specific script 
+IDCODE=0x41113043
+
+# Analyze toplevel
+pushd $BUILD_DIR
+    ghdl -i ../targets/ulx3s_85k.vhdl
+    ghdl -m toplevel
+
+    # Synthesize
+    eval "$YOSYS -m ghdl -p 'ghdl toplevel; synth_ecp5 -json ./toplevel.ulx3s.json'"
+    eval "$NEXTPNR --json ./toplevel.ulx3s.json --textcfg ./toplevel.ulx3s.config --lpf ../targets/ulx3s.lpf --85k --package CABGA381"
+    eval "$ECPPACK ./toplevel.ulx3s.config ./toplevel.ulx3s.bit --idcode $IDCODE"
+popd
