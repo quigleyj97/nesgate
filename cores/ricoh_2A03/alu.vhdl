@@ -69,7 +69,7 @@ architecture rtl of mos_6502_alu is
     signal b_register_extended: std_ulogic_vector(9 downto 0);
     signal sum_register: std_ulogic_vector(9 downto 0);
 begin
-    a_register_extended <= std_ulogic_vector('0' & a & '0');
+    a_register_extended <= std_ulogic_vector('0' & a & '1');
     b_register_extended <= std_ulogic_vector('0' & b & '1') when carry_in_IADDC = '1'
         else std_ulogic_vector('0' & b & '0');
     sum_register <= std_ulogic_vector(unsigned(a_register_extended) + unsigned(b_register_extended));
@@ -82,8 +82,7 @@ begin
               (others => '0');
     
     carry_out_ACR <= sum_register(9);
-    --! @todo Fix this
-    overflow_AVR <= '0';
+    overflow_AVR <= (a(7) xor sum_register(8)) and (b(7) xor sum_register(8));
     half_carry_HC <= '0';
 
 end rtl;
