@@ -7,3 +7,4 @@ logic of this project.
 - blinky
 - clock_divider
 - @subpage Ricoh2A03
+- @subpage PhasedClockGen

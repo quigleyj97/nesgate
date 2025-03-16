@@ -20,7 +20,7 @@ ECPPACK="$CONTAINER_RUNNER run $CONTAINER_ARGS $TRELLIS_CONTAINER_NAME ecppack"
 
 for core in cores/*; do
     # Skip the index.md file as that's not actually a core
-    if [ "$core" == "cores/index.md" ]; then
+    if [ $core = "cores/index.md" ]; then
         continue
     fi
     pushd $core

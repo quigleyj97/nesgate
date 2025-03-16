@@ -4,6 +4,8 @@ This core implements a Ricoh 2A03, a variant of the MOS 6502 microprocessor that
 was used in the Nintendo Entertainment System and Famicom. Additional variants,
 like the Ricoh 2A07, were used in some models of the system, such as the PAL NES.
 
+Reference: @ref mos_6502
+
 ## A note on signal names
 
 I use expanded signal names for readability and to keep what's left of my sanity
