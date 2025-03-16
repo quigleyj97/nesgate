@@ -49,3 +49,5 @@ is not required.
 Right now, there's only one target supported- the ULX3S with the ECP5-85k. I
 plan to extend the synthesis script to allow compilation for other targets as
 well, but we'll cross that bridge when we get there.
+
+@subpage cores

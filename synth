@@ -19,6 +19,10 @@ NEXTPNR="$CONTAINER_RUNNER run $CONTAINER_ARGS $TRELLIS_NEXTPNR_CONTAINER_NAME n
 ECPPACK="$CONTAINER_RUNNER run $CONTAINER_ARGS $TRELLIS_CONTAINER_NAME ecppack"
 
 for core in cores/*; do
+    # Skip the index.md file as that's not actually a core
+    if [ "$core" == "cores/index.md" ]; then
+        continue
+    fi
     pushd $core
     ./analyze $BUILD_DIR
     ./test $BASE_DIR
