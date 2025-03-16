@@ -1,3 +1,7 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
 entity mos_6502_alu is
     port (
         --! The A input register for the ALU
@@ -54,6 +58,32 @@ entity mos_6502_alu is
 
         --! Enable right shift
         --! @ref Ricoh2A03_ALU_SRS
-        enable_right_shift_SRS: in std_ulogic;
+        enable_right_shift_SRS: in std_ulogic
     );
 end entity;
+
+architecture rtl of mos_6502_alu is
+    -- Some internal signals to make carry and overflow calculations easier
+    -- These are <carryout>,<8 to 1:register 7 to 0><carryin>
+    signal a_register_extended: std_ulogic_vector(9 downto 0);
+    signal b_register_extended: std_ulogic_vector(9 downto 0);
+    signal sum_register: std_ulogic_vector(9 downto 0);
+begin
+    a_register_extended <= std_ulogic_vector('0' & a & '0');
+    b_register_extended <= std_ulogic_vector('0' & b & '1') when carry_in_IADDC = '1'
+        else std_ulogic_vector('0' & b & '0');
+    sum_register <= std_ulogic_vector(unsigned(a_register_extended) + unsigned(b_register_extended));
+
+    result <= a or b when enable_or_ORS = '1' else
+              a xor b when enable_xor_EORS = '1' else
+              a and b when enable_and_ANDS = '1' else
+              std_ulogic_vector(sum_register(8 downto 1)) when enable_sum_SUMS = '1' else
+              ('0' & a(7 downto 1)) when enable_right_shift_SRS = '1' else
+              (others => '0');
+    
+    carry_out_ACR <= sum_register(9);
+    --! @todo Fix this
+    overflow_AVR <= '0';
+    half_carry_HC <= '0';
+
+end rtl;
