@@ -59,6 +59,9 @@ The 6502 supports instructions for both, and strangely while this only seems to
 support right-shifts I know the CPU also has both arithmetic and logical left
 shifts.
 
+#### `ADD/SB` - Enable Adder Hold Register SB Bus Output {#Ricoh2A03_ADD_SB}
+#### `ADD/ADL` - Enable Adder Hold Register ADL Bus Output {#Ricoh2A03_ADD_ADL}
+
 ### Output
 
 On block diagrams, I see the outputs all broken out by operation only to be

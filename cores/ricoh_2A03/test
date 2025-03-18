@@ -4,5 +4,6 @@ set -x
 set -e
 
 pushd $1
-python -m util.run_cocotb mos_6502_alu cores.ricoh_2A03.verify_alu ./cores/ricoh_2A03/alu/alu.vhdl
+python -m util.run_cocotb mos_6502_alu cores.ricoh_2A03.alu.verify_alu ./cores/ricoh_2A03/alu/alu.vhdl
+python -m util.run_cocotb adder_hold_register cores.ricoh_2A03.alu.verify_add ./cores/ricoh_2A03/alu/adder_hold_register.vhdl
 popd

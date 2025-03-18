@@ -1,6 +1,6 @@
 import cocotb
 from cocotb.handle import SimHandleBase
-from cocotb.triggers import NextTimeStep, Timer
+from cocotb.triggers import Timer
 
 @cocotb.test
 async def verify_alu_can_handle_1_and_1(dut: SimHandleBase):

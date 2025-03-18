@@ -3,8 +3,8 @@
 The subunits I'm envisioning are:
 
 - @subpage Ricoh2A03_ALU
-    - [x] Arithmetic Logic Unit
-    - [ ] Adder hold register
+    - [x] @ref mos_6502_alu
+    - [x] @ref adder_hold_register
     - [ ] A and B input registers
     - [ ] (todo) BCD Corrector
 - Ricoh2A03_Instruction_Decoder
