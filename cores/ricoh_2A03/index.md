@@ -23,16 +23,7 @@ As such, when naming a signal I will start with a name that makes sense to me,
 but will also suffix it with the label in Dr. Hansen's block diagram to allow
 for easier correlation between designs and HDL.
 
-## Notes on CPU subunits
-
-This is a very complicated part of the project and I'm taking notes as I go to
-help organize my thoughts and ensure I can ramp back up quickly if I return to
-it later after some time away. These can be found under the ./notes folder in
-this core, and should be picked up by Doxygen.
-
-### Subunit list
-
-- ALU @subpage Ricoh2A03_ALU
+Reference: @subpage Ricoh2A03_code_organization
 
 ## References
 

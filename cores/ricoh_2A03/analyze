@@ -3,7 +3,7 @@
 set -x
 set -e
 
-FILES="../cores/ricoh_2A03/alu.vhdl"
+FILES="../cores/ricoh_2A03/alu/alu.vhdl"
 
 pushd $1
 ghdl -i $FILES
