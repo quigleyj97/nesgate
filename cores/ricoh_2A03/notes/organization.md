@@ -5,7 +5,8 @@ The subunits I'm envisioning are:
 - @subpage Ricoh2A03_ALU
     - [x] @ref mos_6502_alu
     - [x] @ref adder_hold_register
-    - [ ] A and B input registers
+    - [x] @ref a_input_register
+    - [ ] B input register
     - [ ] (todo) BCD Corrector
 - Ricoh2A03_Instruction_Decoder
     - [ ] Predecode register

@@ -62,6 +62,9 @@ shifts.
 #### `ADD/SB` - Enable Adder Hold Register SB Bus Output {#Ricoh2A03_ADD_SB}
 #### `ADD/ADL` - Enable Adder Hold Register ADL Bus Output {#Ricoh2A03_ADD_ADL}
 
+#### `SB/ADD` - Load from the SB bus into the A input register {#Ricoh2A03_SB_ADD}
+#### `0/ADD` - Load 0s into the A input register {#Ricoh2A03_0_ADD}
+
 ### Output
 
 On block diagrams, I see the outputs all broken out by operation only to be

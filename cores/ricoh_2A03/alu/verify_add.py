@@ -2,7 +2,6 @@ import cocotb
 from cocotb.triggers import Timer
 from cocotb.handle import SimHandleBase
 
-# Unit test for the adder_hold_register module
 @cocotb.test()
 async def test_adder_hold_register(dut: SimHandleBase):
     # Verify the register can load a value
