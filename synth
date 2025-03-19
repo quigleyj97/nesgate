@@ -38,7 +38,7 @@ pushd $BUILD_DIR
     ghdl -m toplevel
 
     # Synthesize
-    eval "$YOSYS -m ghdl -p 'ghdl toplevel; synth_ecp5 -json ./toplevel.ulx3s.json'"
+    eval "$YOSYS -m ghdl -p 'ghdl toplevel; debug synth_ecp5 -json ./toplevel.ulx3s.json'"
     eval "$NEXTPNR --json ./toplevel.ulx3s.json --textcfg ./toplevel.ulx3s.config --lpf ../targets/ulx3s.lpf --85k --package CABGA381"
     eval "$ECPPACK ./toplevel.ulx3s.config ./toplevel.ulx3s.bit --idcode $IDCODE"
 popd
