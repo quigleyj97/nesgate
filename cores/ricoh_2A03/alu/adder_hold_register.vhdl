@@ -20,11 +20,11 @@ entity adder_hold_register is
 end entity;
 
 architecture rtl of adder_hold_register is
-    signal register_data: std_ulogic_vector(7 downto 0);
+    signal register_data: std_ulogic_vector(7 downto 0) := (others => '0');
 begin
-    process(load)
+    process(load, data_in)
     begin
-        if rising_edge(load) then
+        if load'event and load = '1' then
             register_data <= data_in;
         end if;
     end process;

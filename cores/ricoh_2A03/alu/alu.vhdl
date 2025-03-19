@@ -65,9 +65,9 @@ end entity;
 architecture rtl of mos_6502_alu is
     -- Some internal signals to make carry and overflow calculations easier
     -- These are <carryout>,<8 to 1:register 7 to 0><carryin>
-    signal a_register_extended: std_ulogic_vector(9 downto 0);
-    signal b_register_extended: std_ulogic_vector(9 downto 0);
-    signal sum_register: std_ulogic_vector(9 downto 0);
+    signal a_register_extended: std_ulogic_vector(9 downto 0) := (others => '0');
+    signal b_register_extended: std_ulogic_vector(9 downto 0) := (others => '0');
+    signal sum_register: std_ulogic_vector(9 downto 0) := (others => '0');
 begin
     a_register_extended <= std_ulogic_vector('0' & a & '1');
     b_register_extended <= std_ulogic_vector('0' & b & '1') when carry_in_IADDC = '1'

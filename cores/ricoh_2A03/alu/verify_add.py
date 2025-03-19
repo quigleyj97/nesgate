@@ -11,6 +11,7 @@ async def test_adder_hold_register(dut: SimHandleBase):
     dut.load.value = True
     await Timer(1, units="fs")
     dut.load.value = False
+    await Timer(1, units="fs")
     assert dut.register_data.value == 0b00000000
 
     # Assert that the register outputs open bus when the enable signal is low

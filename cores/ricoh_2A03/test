@@ -6,4 +6,6 @@ set -e
 pushd $1
 python -m util.run_cocotb mos_6502_alu cores.ricoh_2A03.alu.verify_alu ./cores/ricoh_2A03/alu/alu.vhdl
 python -m util.run_cocotb adder_hold_register cores.ricoh_2A03.alu.verify_add ./cores/ricoh_2A03/alu/adder_hold_register.vhdl
+python -m util.run_cocotb a_input_register cores.ricoh_2A03.alu.verify_a_input_register ./cores/ricoh_2A03/alu/a_input_register.vhdl
+python -m util.run_cocotb mos_6502 cores.ricoh_2A03.sim_core ./cores/ricoh_2A03/alu/alu.vhdl ./cores/ricoh_2A03/alu/adder_hold_register.vhdl ./cores/ricoh_2A03/alu/a_input_register.vhdl ./cores/ricoh_2A03/core.vhdl ./cores/phased_clock_generator/core.vhdl
 popd

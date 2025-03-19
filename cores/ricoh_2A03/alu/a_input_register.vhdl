@@ -10,24 +10,25 @@ entity a_input_register is
         --! @ref Ricoh2A03_0_ADD
         clear_0_ADD: in std_ulogic;
         --! Data output into the ALU
-        data_out: out std_ulogic_vector(7 downto 0)
+        data_out: out std_ulogic_vector(7 downto 0);
+        --! Clock Phase2 signal
+        --! TODO: Determine if this is the right phase and whether the original was clocked
+        phi2: in std_ulogic
     );
 end entity;
 
 architecture rtl of a_input_register is
-    signal data_register: std_ulogic_vector(7 downto 0) := (others => '0');
+    signal data_latch: std_ulogic_vector(7 downto 0) := (others => '0');
 begin
-    process(clear_0_ADD, load_SB_ADD)
+    process(phi2)
     begin
-        if (clear_0_ADD = '1') and (load_SB_ADD = '0') then
-            data_register <= (others => '0');
-        elsif (clear_0_ADD = '0') and (load_SB_ADD = '1') then
-            data_register <= data_in_SB;
-        elsif (clear_0_ADD = '1') and (load_SB_ADD = '1') then
-            data_register <= (others => '-');
-        else
-            data_register <= data_register;
+        if rising_edge(phi2) then
+            if (load_SB_ADD = '1') then
+                data_latch <= data_in_SB;
+            elsif (clear_0_ADD = '1') then
+                data_latch <= (others => '0');
+            end if;
         end if;
     end process;
-    data_out <= data_register;
+    data_out <= data_latch;
 end architecture;

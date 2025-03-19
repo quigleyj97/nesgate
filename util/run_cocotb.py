@@ -24,7 +24,7 @@ def mk_plusargs(test_name: str) -> list[str]:
     plusargs = []
     waveform_file = os.getenv("WAVE")
     if waveform_file is not None:
-        plusargs.append("--wave=" + ".".join([test_name, "ghw"]))
+        plusargs.append("--vcd=" + ".".join([test_name, "vcd"]))
     return plusargs
 
 if __name__ == "__main__":
