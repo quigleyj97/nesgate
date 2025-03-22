@@ -8,6 +8,7 @@ entity adder_hold_register is
         load: std_ulogic;
         --! The data to be loaded into the register
         data_in: std_ulogic_vector(7 downto 0);
+        --! TODO: This was incorrectly merged into a single signal and needs to be split up
         --! @ref Ricoh2A03_ADD_SB
         sb_bus_enable_ADD_SB: in std_ulogic;
         --! Port for the SB bus of the MOS 6502

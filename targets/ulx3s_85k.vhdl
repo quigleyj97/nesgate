@@ -33,7 +33,7 @@ architecture rtl of toplevel is
             data_in_SB: in std_ulogic_vector(7 downto 0);
             clear_0_ADD: in std_ulogic;
             data_out: out std_ulogic_vector(7 downto 0);
-            phi2: in std_ulogic
+            metaclock: in std_ulogic
         );
     end component;
 
@@ -89,7 +89,7 @@ begin
         data_in_SB => databus,
         clear_0_ADD => btn(4),
         data_out => alu_input_a,
-        phi2 => phi2
+        metaclock => phi2
     );
     add0: adder_hold_register port map(
         load => phi2,

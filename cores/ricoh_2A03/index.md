@@ -6,6 +6,12 @@ like the Ricoh 2A07, were used in some models of the system, such as the PAL NES
 
 Reference: @ref mos_6502
 
+## Subpages
+
+- @subpage Ricoh2A03_code_organization
+- @subpage Ricoh_2A03_clocks
+- @subpage Ricoh_2A03_Signals
+
 ## A note on signal names
 
 I use expanded signal names for readability and to keep what's left of my sanity
@@ -22,8 +28,6 @@ created at MOS Technology in the 70s. [2]
 As such, when naming a signal I will start with a name that makes sense to me,
 but will also suffix it with the label in Dr. Hansen's block diagram to allow
 for easier correlation between designs and HDL.
-
-Reference: @subpage Ricoh2A03_code_organization
 
 ## References
 

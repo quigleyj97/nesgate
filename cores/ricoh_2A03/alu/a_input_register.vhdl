@@ -11,18 +11,18 @@ entity a_input_register is
         clear_0_ADD: in std_ulogic;
         --! Data output into the ALU
         data_out: out std_ulogic_vector(7 downto 0);
-        --! Clock Phase2 signal
-        --! TODO: Determine if this is the right phase and whether the original was clocked
-        phi2: in std_ulogic
+        --! Clock to drive the latch circuitry
+        --! @ref metaclock
+        metaclock: in std_ulogic
     );
 end entity;
 
 architecture rtl of a_input_register is
     signal data_latch: std_ulogic_vector(7 downto 0) := (others => '0');
 begin
-    process(phi2)
+    process(metaclock)
     begin
-        if rising_edge(phi2) then
+        if rising_edge(metaclock) then
             if (load_SB_ADD = '1') then
                 data_latch <= data_in_SB;
             elsif (clear_0_ADD = '1') then
