@@ -11,9 +11,14 @@ transistors away. [1] This may have a minimal impact on emulation accuracy, but
 is part of the base 6502 and would be appropriate to implement in order to
 support other platforms like the C64.
 
-## Signals
+### Inputs
 
-### ALU Output Signals
+The ALU is wired to the ADL, SB, and DB busses through input registers.
+While it has no direct connection to the ADH bus, a set of passthrough MOSFETs
+between the ADH and SB busses allows the ALU to conditionally read from that
+bus.
+
+### Output
 
 #### `ACR` - ALU Carryout {#Ricoh2A03_ALU_ACR}
 
@@ -33,39 +38,6 @@ to be used as an input to the BCD mode- there's an additional stage after the
 ALU that's nominally used to correct the ALU output for BCD, and this signal
 is routed there, so I imagine it might come from an individual half-adder-
 maybe one for the MSB?
-
-### ALU Control Signals
-
-#### `DAA` - ALU Decimal Mode Enable {#Ricoh2A03_ALU_DAA}
-
-This controls whether the ALU operates in normal mode or in BCD
-
-#### `I/ADDC` - ALU Carry-in Input {#Ricoh2A03_ALU_IADDC}
-
-Control line for carry-in
-
-#### `SUMS` - ALU Summation Enable {#Ricoh2A03_ALU_SUMS}
-#### `ANDS` - ALU Logical AND Enable {#Ricoh2A03_ALU_ANDS}
-#### `EORS` - ALU Logical XOR Enable {#Ricoh2A03_ALU_EORS}
-
-At least, exclusive is what I'm guessing the "E" in "EOR" expands to.
-
-#### `ORS` - ALU Logical OR Enable {#Ricoh2A03_ALU_ORS}
-#### `SRS` - ALU Shift Right Enable {#Ricoh2A03_ALU_SRS}
-
-TBD: Is this a logical or arithmetic shift?
-
-The 6502 supports instructions for both, and strangely while this only seems to
-support right-shifts I know the CPU also has both arithmetic and logical left
-shifts.
-
-#### `ADD/SB` - Enable Adder Hold Register SB Bus Output {#Ricoh2A03_ADD_SB}
-#### `ADD/ADL` - Enable Adder Hold Register ADL Bus Output {#Ricoh2A03_ADD_ADL}
-
-#### `SB/ADD` - Load from the SB bus into the A input register {#Ricoh2A03_SB_ADD}
-#### `0/ADD` - Load 0s into the A input register {#Ricoh2A03_0_ADD}
-
-### Output
 
 On block diagrams, I see the outputs all broken out by operation only to be
 immediately joined together before being fed into the internal ALU register-

@@ -1,6 +1,8 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
+--! A simple clock generator that generates two mutually independent clock
+--! signals from a single input clock signal.
 entity phased_clock_generator is
     port(
         clk_in: in std_ulogic;
