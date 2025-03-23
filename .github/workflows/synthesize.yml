@@ -20,6 +20,8 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: "3.10"
+    - name: Install pipenv
+      run: pip install pipenv
     - name: Run FPGA synthesis
       run: pipenv run ./synth
     - name: Upload bitstream
