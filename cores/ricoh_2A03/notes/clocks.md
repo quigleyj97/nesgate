@@ -5,6 +5,13 @@ used in different phases of execution to light up different parts of the CPU.
 This is a gate efficiency measure, and effectively allows the CPU to reuse
 parts, like the ALU, for both user code and CPU operation.
 
+## Phi1 {#Ricoh_2A03_Phi1}
+
+## Phi2 {#Ricoh_2A03_Phi2}
+
+Most control signals are latched on in Phi2, as are most external memory modules
+designed to work with the 6502- these infer a 'ready' signal from Phi2.
+
 ## Metaclock {#metaclock}
 
 Usually, 6502s could generate these signals internally so long as it was given

@@ -41,7 +41,8 @@ architecture rtl of toplevel is
         port(
             load: std_ulogic;
             data_in: std_ulogic_vector(7 downto 0);
-            sb_bus_enable_ADD_SB: in std_ulogic;
+            sb_bus_enable_ADD_SB_0_6: in std_ulogic;
+            sb_bus_enable_ADD_SB_7: in std_ulogic;
             sb_bus_port: out std_ulogic_vector(7 downto 0);
             adh_bus_enable_ADD_ADL: in std_ulogic;
             adh_bus_port: out std_ulogic_vector(7 downto 0)
@@ -94,7 +95,8 @@ begin
     add0: adder_hold_register port map(
         load => phi2,
         data_in => alu_output,
-        sb_bus_enable_ADD_SB => '1',
+        sb_bus_enable_ADD_SB_0_6 => '1',
+        sb_bus_enable_ADD_SB_7 => '1',
         sb_bus_port => databus,
         adh_bus_enable_ADD_ADL => '1',
         adh_bus_port => led

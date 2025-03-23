@@ -1,7 +1,5 @@
 # Subunit organization {#Ricoh2A03_code_organization}
 
-The subunits I'm envisioning are:
-
 - [~] @subpage Ricoh2A03_ALU
     - [x] @ref mos_6502_alu
     - [x] @ref adder_hold_register
@@ -29,8 +27,8 @@ The subunits I'm envisioning are:
     - [ ] Data bus tristate buffer
     - [ ] Data out register
 - @ref mos_6502
-    - [ ] SB bus
-    - [ ] DB bus
-    - [ ] ADL bus
+    - [~] SB bus
+    - [~] DB bus
+    - [~] ADL bus
     - [ ] ADH bus
     - [ ] Precharge and pass MOSFETs

@@ -3,8 +3,7 @@
 These folders contain individual, self-contained IP cores that comprise the
 logic of this project.
 
-## List of cores
-- blinky
+- @ref blinky
 - clock_divider
 - @subpage Ricoh2A03
 - @subpage PhasedClockGen

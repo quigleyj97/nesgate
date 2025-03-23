@@ -36,11 +36,19 @@ by the project
 ### `S/S` {#Ricoh_2A03_Signal_S_S}
 ### `S/SB` {#Ricoh_2A03_Signal_S_SB}
 
+## ALU Signals
+
 ### `NOT(DB)/ADD` ALU B Register Load Inverted {#Ricoh_2A03_Signal_NOT_DB_ADD}
+
+Load the inverse of a word from the DB bus into the B input register of the ALU
 
 ### `DB/ADD` ALU B Register Load {#Ricoh_2A03_Signal_DB_ADD}
 
+Load a word from the DB bus into the B input register of the ALU
+
 ### `ADL/ADD` ALU B Register Load ADL Bus {#Ricoh_2A03_Signal_ADL_ADD}
+
+Load a word from the ADL bus into the B input register of the ALU
 
 ### `I/ADDC` - ALU Carry-in Input {#Ricoh2A03_ALU_IADDC}
 
@@ -71,7 +79,7 @@ shifts.
 
 ### `ADD/ADL` - Enable Adder Hold Register ADL Bus Output {#Ricoh2A03_ADD_ADL}
 ### `ADD/SB(0-6)` - Enable Adder Hold Register SB Bus Outpu, bits 0-6 {#Ricoh2A03_ADD_SB_0_6}
-### `ADD/SB(0-6)` - Enable Adder Hold Register SB Bus Outpu, bit 7 {#Ricoh2A03_ADD_SB_7}
+### `ADD/SB(7)` - Enable Adder Hold Register SB Bus Outpu, bit 7 {#Ricoh2A03_ADD_SB_7}
 ### `0/ADD` - Load 0s into the A input register {#Ricoh2A03_0_ADD}
 ### `SB/ADD` - Load from the SB bus into the A input register {#Ricoh2A03_SB_ADD}
 
