@@ -21,7 +21,9 @@ jobs:
       with:
         python-version: "3.10"
     - name: Install pipenv
-      run: pip install pipenv
+      run: |
+        pip install pipenv
+        pipenv install
     - name: Run FPGA synthesis
       run: pipenv run "`pwd`/synth"
     - name: Upload bitstream
