@@ -27,6 +27,7 @@ jobs:
         pwd
         python --version
         ls -l
+        pipenv run pwd
         pipenv run "`pwd`/synth"
     - name: Upload bitstream
       uses: actions/upload-artifact@v4
