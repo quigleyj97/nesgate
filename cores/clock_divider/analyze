@@ -6,5 +6,5 @@ set -e
 FILES="../cores/clock_divider/clock_divider.vhdl"
 
 pushd $1
-ghdl -i $FILES
+eval "$GHDL -i $FILES"
 popd

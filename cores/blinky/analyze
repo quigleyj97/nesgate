@@ -6,5 +6,5 @@ set -e
 FILES="../cores/blinky/core.vhdl"
 
 pushd $1
-eval "ghdl -i $FILES"
+eval "$GHDL -i $FILES"
 popd

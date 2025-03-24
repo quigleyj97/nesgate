@@ -13,5 +13,5 @@ FILES=(
 )
 
 pushd $1
-ghdl -i ${FILES[@]}
+eval "$GHDL -i ${FILES[@]}"
 popd

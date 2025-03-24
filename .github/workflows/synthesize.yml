@@ -23,12 +23,7 @@ jobs:
     - name: Install pipenv
       run: pip install pipenv
     - name: Run FPGA synthesis
-      run: |
-        pwd
-        python --version
-        ls -l
-        pipenv run pwd
-        pipenv run "`pwd`/synth"
+      run: pipenv run "`pwd`/synth"
     - name: Upload bitstream
       uses: actions/upload-artifact@v4
       with:

@@ -17,6 +17,11 @@ CONTAINER_ARGS="--rm -it -v $BASE_DIR:/src -w /src/build"
 YOSYS="$CONTAINER_RUNNER run $CONTAINER_ARGS $GHDL_YOSYS_CONTAINER_NAME yosys"
 NEXTPNR="$CONTAINER_RUNNER run $CONTAINER_ARGS $TRELLIS_NEXTPNR_CONTAINER_NAME nextpnr-ecp5"
 ECPPACK="$CONTAINER_RUNNER run $CONTAINER_ARGS $TRELLIS_CONTAINER_NAME ecppack"
+export GHDL="ghdl"
+
+if ! command -v ghdl; then
+    GHDL="$CONTAINER_RUNNER run $CONTAINER_ARGS $GHDL_YOSYS_CONTAINER_NAME ghdl"
+fi
 
 for core in cores/*; do
     # Skip the index.md file as that's not actually a core
@@ -34,8 +39,8 @@ IDCODE=0x41113043
 
 # Analyze toplevel
 pushd $BUILD_DIR
-    ghdl -i ../targets/ulx3s_85k.vhdl
-    ghdl -m toplevel
+    eval "$GHDL -i ../targets/ulx3s_85k.vhdl"
+    eval "$GHDL -m toplevel"
 
     # Synthesize
     eval "$YOSYS -m ghdl -p 'ghdl toplevel; debug synth_ecp5 -json ./toplevel.ulx3s.json'"
