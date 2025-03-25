@@ -9,6 +9,7 @@ FILES=(
     "../cores/ricoh_2A03/alu/a_input_register.vhdl"
     "../cores/ricoh_2A03/alu/b_input_register.vhdl"
     "../cores/ricoh_2A03/alu/core.vhdl"
+    "../cores/ricoh_2A03/datapath/index_register.vhdl"
     "../cores/ricoh_2A03/core.vhdl"
 )
 
