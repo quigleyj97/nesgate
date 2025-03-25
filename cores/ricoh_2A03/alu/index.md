@@ -11,6 +11,18 @@ transistors away. [1] This may have a minimal impact on emulation accuracy, but
 is part of the base 6502 and would be appropriate to implement in order to
 support other platforms like the C64.
 
+[1]: https://forums.nesdev.org/viewtopic.php?t=9813
+
+## Components
+
+- @ref logic_core - The main component of this subcore
+- @ref a_input_register
+- @ref b_input_register
+- @ref adder_hold_register
+- @ref mos_6502_alu
+
+## Signals
+
 ### Inputs
 
 The ALU is wired to the ADL, SB, and DB busses through input registers.
@@ -44,7 +56,3 @@ immediately joined together before being fed into the internal ALU register-
 My guess is that the lines are simply wired together and that trying to enable
 multiple operations at once will cause bus collisions, but I'm not sure about
 that.
-
-## References
-
-[1]: https://forums.nesdev.org/viewtopic.php?t=9813

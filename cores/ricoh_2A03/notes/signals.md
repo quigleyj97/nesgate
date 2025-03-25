@@ -83,15 +83,21 @@ shifts.
 ### `0/ADD` - Load 0s into the A input register {#Ricoh2A03_0_ADD}
 ### `SB/ADD` - Load from the SB bus into the A input register {#Ricoh2A03_SB_ADD}
 
-## Uncategorized 2
+## Register control signals 
+### `SB/AC` - Load from SB bus into the accumulator {#Ricoh_Signal_SB_AC}
 
-### `SB/AC` {#Ricoh_Signal_SB_AC}
-### `AC/DB` {#Ricoh_Signal_AC_DB}
-### `AC/SB` {#Ricoh_Signal_AC_SB}
+This is nominally routed through the BCD correction circuity, but this core
+doesn't yet implement that, so the routing is direct.
+
+### `AC/DB` - Enable Accumulator output to DB bus {#Ricoh_Signal_AC_DB}
+### `AC/SB` - Enable Accumulator output to SB bus {#Ricoh_Signal_AC_SB}
 ### `SB/X` {#Ricoh_Signal_SB_X}
 ### `X/SB` {#Ricoh_Signal_X_SB}
 ### `SB/Y` {#Ricoh_Signal_SB_Y}
 ### `Y/SB` {#Ricoh_Signal_Y_SB}
+
+## Uncategorized 2
+
 ### `P/DB` {#Ricoh_Signal_P_DB}
 ### `DB0/C` {#Ricoh_Signal_DB0_C}
 ### `IR5/C` {#Ricoh_Signal_IR5_C}

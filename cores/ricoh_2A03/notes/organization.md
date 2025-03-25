@@ -19,16 +19,11 @@
     - [ ] Program Counter registers
     - [ ] Program Counter increment logic
     - [ ] Address Bus registers
-- Ricoh2A03_Register_File
-    - [ ] X and Y index registers
+- [~] @subpage MOS_6502_Datapath
+    - [x] @ref index_register - X and Y index registers
+    - [x] @ref accumulator
+    - [ ] Bus routings, including prechare and passthrough MOSFETs
     - [ ] Status register
-- Ricoh2A03_Databus_Interface
     - [ ] Input data latch
     - [ ] Data bus tristate buffer
     - [ ] Data out register
-- @ref mos_6502
-    - [~] SB bus
-    - [~] DB bus
-    - [~] ADL bus
-    - [ ] ADH bus
-    - [ ] Precharge and pass MOSFETs
