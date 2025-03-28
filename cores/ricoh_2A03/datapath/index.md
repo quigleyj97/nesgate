@@ -7,3 +7,4 @@ the input data latch, and the pass and precharge MOSFETs between each bus.
 
 - @ref index_register
 - @ref accumulator
+- @ref data_input_latch

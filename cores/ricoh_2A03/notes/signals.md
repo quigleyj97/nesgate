@@ -8,11 +8,14 @@ Hansen's block diagram, and the index of each signal in this list corresponds to
 the index of that signal in the `control_signals` inputs that are commonly used
 by the project
 
+## Data latch control signals
+
+### `DL/DB` Data Input Latch DB Bus Output Enable {#Ricoh_2A03_Signal_DL_DB}
+### `DL/ADL` Data Input Latch ADL Bus Output Enable {#Ricoh_2A03_Signal_DL_ADL}
+### `DL/ADH` Data Input Latch ADH Bus Output Enable {#Ricoh_2A03_Signal_DL_ADH}
+
 ## Uncategorized
 
-### `DL/DB` {#Ricoh_2A03_Signal_DL_DB}
-### `DL/ADL` {#Ricoh_2A03_Signal_DL_ADL}
-### `DL/ADH` {#Ricoh_2A03_Signal_DL_ADH}
 ### `0/ADH0` {#Ricoh_2A03_Signal_0_ADH0}
 ### `0/ADH(1-7)` {#Ricoh_2A03_Signal_0_ADH_1_7}
 ### `ADH/ABH` {#Ricoh_2A03_Signal_ADH_ABH}
