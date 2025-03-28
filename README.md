@@ -2,7 +2,15 @@
 
 VHDL-based emulator for the NES, targetted at the ULX3S development board.
 
-## Building
+CI status: ![Github Actions CI badge](https://github.com/quigleyj97/nesgate/actions/workflows/synthesize.yml/badge.svg)
+
+Documentation: [quigleyj97.github.io/nesgate](https://quigleyj97.github.io/nesgate/md_README.html)
+
+Bitstreams are compiled on each change via GitHub Actions and stored for 90 days. Download the latest here: [ulx3s bitstream](https://nightly.link/quigleyj97/nesgate/workflows/synthesize/main?preview)
+
+See the [programming section](#HProgramming) for instructions on how to upload the bitstream to your board.
+
+## Building from source
 
 ### Prerequisites
 
