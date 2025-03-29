@@ -1,5 +1,7 @@
 # Subunit organization {#Ricoh2A03_code_organization}
 
+![Block diagram of everything currently implemented](./implemented.drawio.svg)
+
 - [~] @subpage Ricoh2A03_ALU
     - [x] @ref mos_6502_alu
     - [x] @ref adder_hold_register
@@ -24,6 +26,5 @@
     - [x] @ref accumulator
     - [ ] Bus routings, including prechare and passthrough MOSFETs
     - [ ] Status register
-    - [ ] Input data latch
-    - [ ] Data bus tristate buffer
-    - [ ] Data out register
+    - [x] @ref data_input_latch
+    - [x] @ref data_output_latch
