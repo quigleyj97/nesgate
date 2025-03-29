@@ -115,3 +115,10 @@ doesn't yet implement that, so the routing is direct.
 ### `AVR/V` {#Ricoh_Signal_AVR_V}
 ### `I/V` {#Ricoh_Signal_I_V}
 ### `DB7/N` {#Ricoh_Signal_DB7_N}
+
+## External CPU Signals
+
+### `R/NOT W` Read/write signal {#Ricoh_Signal_R_NOT_W}
+
+When asserted, the CPU wants to execute a bus read on the next Phi2. Conversely,
+when not asserted, the CPU wants to execute a write on the next Phi2.
