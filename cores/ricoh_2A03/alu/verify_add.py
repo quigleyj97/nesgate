@@ -16,7 +16,7 @@ async def test_adder_hold_register(dut: SimHandleBase):
 
     # Assert that the register outputs open bus when the enable signal is low
     assert not dut.sb_bus_port.value.is_resolvable
-    assert not dut.adh_bus_port.value.is_resolvable
+    assert not dut.adl_bus_port.value.is_resolvable
 
     dut.adl_bus_enable_ADD_ADL.value = True
     dut.sb_bus_enable_ADD_SB_0_6.value = True
@@ -24,7 +24,7 @@ async def test_adder_hold_register(dut: SimHandleBase):
     await Timer(1, units="fs")
 
     assert dut.sb_bus_port.value == 0b00000000
-    assert dut.adh_bus_port.value == 0b00000000
+    assert dut.adl_bus_port.value == 0b00000000
 
     # Verify the bit-level outputs when only parts of the SB bus output are enabled
     dut.sb_bus_enable_ADD_SB_0_6.value = False
