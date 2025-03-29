@@ -18,7 +18,7 @@ async def test_adder_hold_register(dut: SimHandleBase):
     assert not dut.sb_bus_port.value.is_resolvable
     assert not dut.adh_bus_port.value.is_resolvable
 
-    dut.adh_bus_enable_ADD_ADL.value = True
+    dut.adl_bus_enable_ADD_ADL.value = True
     dut.sb_bus_enable_ADD_SB_0_6.value = True
     dut.sb_bus_enable_ADD_SB_7.value = True
     await Timer(1, units="fs")

@@ -44,7 +44,7 @@ architecture rtl of toplevel is
             sb_bus_enable_ADD_SB_0_6: in std_ulogic;
             sb_bus_enable_ADD_SB_7: in std_ulogic;
             sb_bus_port: out std_ulogic_vector(7 downto 0);
-            adh_bus_enable_ADD_ADL: in std_ulogic;
+            adl_bus_enable_ADD_ADL: in std_ulogic;
             adh_bus_port: out std_ulogic_vector(7 downto 0)
         );
     end component;
@@ -98,7 +98,7 @@ begin
         sb_bus_enable_ADD_SB_0_6 => '1',
         sb_bus_enable_ADD_SB_7 => '1',
         sb_bus_port => databus,
-        adh_bus_enable_ADD_ADL => '1',
+        adl_bus_enable_ADD_ADL => '1',
         adh_bus_port => led
     );
     alu0: alu port map(

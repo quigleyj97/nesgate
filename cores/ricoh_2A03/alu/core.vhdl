@@ -117,7 +117,7 @@ architecture rtl of logic_core is
             data_in: std_ulogic_vector(7 downto 0);
             sb_bus_enable_ADD_SB: in std_ulogic;
             sb_bus_port: out std_ulogic_vector(7 downto 0);
-            adh_bus_enable_ADD_ADL: in std_ulogic;
+            adl_bus_enable_ADD_ADL: in std_ulogic;
             adh_bus_port: out std_ulogic_vector(7 downto 0)
         );
     end component;
@@ -168,7 +168,7 @@ begin
         sb_bus_enable_ADD_SB_0_6 => control_add_sb_0_6,
         sb_bus_enable_ADD_SB_7 => control_add_sb_7,
         sb_bus_port => sb_bus,
-        adh_bus_enable_ADD_ADL => control_add_adl,
+        adl_bus_enable_ADD_ADL => control_add_adl,
         adh_bus_port => adl_bus
     );
 end architecture;

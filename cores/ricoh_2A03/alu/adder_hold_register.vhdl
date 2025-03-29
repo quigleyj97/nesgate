@@ -15,9 +15,9 @@ entity adder_hold_register is
         --! Port for the SB bus of the MOS 6502
         sb_bus_port: out std_ulogic_vector(7 downto 0);
         --! @ref Ricoh2A03_ADD_ADL
-        adh_bus_enable_ADD_ADL: in std_ulogic;
-        --! Port for the ADH bus of the MOS 6502
-        adh_bus_port: out std_ulogic_vector(7 downto 0)
+        adl_bus_enable_ADD_ADL: in std_ulogic;
+        --! Port for the ADL bus of the MOS 6502
+        adl_bus_port: out std_ulogic_vector(7 downto 0)
     );
 end entity;
 
@@ -33,5 +33,5 @@ begin
 
     sb_bus_port(6 downto 0) <= register_data(6 downto 0) when sb_bus_enable_ADD_SB_0_6 = '1' else (others => 'Z');
     sb_bus_port(7) <= register_data(7) when sb_bus_enable_ADD_SB_7 = '1' else 'Z';
-    adh_bus_port <= register_data when adh_bus_enable_ADD_ADL = '1' else (others => 'Z');
+    adl_bus_port <= register_data when adl_bus_enable_ADD_ADL = '1' else (others => 'Z');
 end architecture;
