@@ -11,7 +11,7 @@ def run_cocotb_test(toplevel_name: str, test_name: str, sources: list[str]):
     runner.build(
         sources=sources,
         hdl_toplevel=toplevel_name,
-        build_dir=root_path / "build" / toplevel_name / test_name
+        build_dir=root_path / "build" / toplevel_name
     )
 
     runner.test(

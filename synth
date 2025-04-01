@@ -23,6 +23,8 @@ if ! command -v ghdl; then
     GHDL="$CONTAINER_RUNNER run $CONTAINER_ARGS $GHDL_YOSYS_CONTAINER_NAME ghdl"
 fi
 
+start_analysis=$(date +%s)
+
 for core in cores/*; do
     # Skip the index.md file as that's not actually a core
     if [ $core = "cores/index.md" ]; then
@@ -33,6 +35,10 @@ for core in cores/*; do
     ./test $BASE_DIR
     popd
 done
+
+end_analysis=$(date +%s)
+
+python -m util.merge_test_results $start_analysis $end_analysis ./build/**/results.xml
 
 # TODO: Move this into a separate, target-specific script 
 IDCODE=0x41113043

@@ -28,6 +28,12 @@ jobs:
         pipenv install
     - name: Run FPGA synthesis
       run: pipenv run "`pwd`/synth"
+    - name: Publish Test Report
+      uses: ctrf-io/github-test-reporter@v1
+      with:
+        report-path: './build/results.json'
+        suite-folded-report: true
+      if: always()
     - name: Upload bitstream
       uses: actions/upload-artifact@v4
       with:
