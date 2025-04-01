@@ -16,4 +16,5 @@ python -m util.run_cocotb index_register cores.ricoh_2A03.datapath.verify_index_
 python -m util.run_cocotb accumulator cores.ricoh_2A03.datapath.verify_accumulator ./cores/ricoh_2A03/datapath/accumulator.vhdl
 python -m util.run_cocotb data_input_latch cores.ricoh_2A03.datapath.verify_data_input_latch ./cores/ricoh_2A03/datapath/data_input_latch.vhdl
 python -m util.run_cocotb data_output_latch cores.ricoh_2A03.datapath.verify_data_output_latch ./cores/ricoh_2A03/datapath/data_output_latch.vhdl
+python -m util.run_cocotb status_register cores.ricoh_2A03.datapath.verify_status_register ./cores/ricoh_2A03/datapath/status_register.vhdl
 popd

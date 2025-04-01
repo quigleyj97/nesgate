@@ -12,6 +12,7 @@ Reference: @ref mos_6502
 - @subpage Ricoh_2A03_clocks
 - @subpage Ricoh_2A03_Signals
 - @subpage Ricoh_2A03_Datapath
+- @subpage 6502_Registers
 
 ## A note on signal names
 

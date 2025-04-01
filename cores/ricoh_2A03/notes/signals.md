@@ -99,22 +99,26 @@ doesn't yet implement that, so the routing is direct.
 ### `SB/Y` {#Ricoh_Signal_SB_Y}
 ### `Y/SB` {#Ricoh_Signal_Y_SB}
 
-## Uncategorized 2
+## Processor Status Register Signals
 
-### `P/DB` {#Ricoh_Signal_P_DB}
-### `DB0/C` {#Ricoh_Signal_DB0_C}
-### `IR5/C` {#Ricoh_Signal_IR5_C}
-### `ACR/C` {#Ricoh_Signal_ACR_C}
-### `DBI/Z` {#Ricoh_Signal_DBI_Z}
-### `DBZ/Z` {#Ricoh_Signal_DBZ_Z}
-### `DB2/I` {#Ricoh_Signal_DB2_I}
-### `IR5/I` {#Ricoh_Signal_IR5_I}
-### `DB3/D` {#Ricoh_Signal_DB3_D}
-### `IR5/D` {#Ricoh_Signal_IR5_D}
-### `DB6/V` {#Ricoh_Signal_DB6_V}
-### `AVR/V` {#Ricoh_Signal_AVR_V}
-### `I/V` {#Ricoh_Signal_I_V}
-### `DB7/N` {#Ricoh_Signal_DB7_N}
+### `P/DB` Enable DB bus output for P register {#Ricoh_Signal_P_DB}
+### `DB0/C` Set C to the value of DB(0) {#Ricoh_Signal_DB0_C}
+### `IR5/C` Set C to the value of IR5 bit {#Ricoh_Signal_IR5_C}
+### `ACR/C` Set C to the value of ACR {#Ricoh_Signal_ACR_C}
+### `DB1/Z` Set Z to the value of DB(1){#Ricoh_Signal_DB1_Z}
+### `DBZ/Z` Set Z to the value of DBZ {#Ricoh_Signal_DBZ_Z}
+### `DB2/I` Set I to the value of DB(2) {#Ricoh_Signal_DB2_I}
+### `IR5/I` Set I to the value of IR5 {#Ricoh_Signal_IR5_I}
+### `DB3/D` Set D to the value of DB(3) {#Ricoh_Signal_DB3_D}
+### `IR5/D` Set D to the value of IR5 {#Ricoh_Signal_IR5_D}
+### `DB6/V` Set V to the value of DB(6) {#Ricoh_Signal_DB6_V}
+### `AVR/V` Set V to the value of AVR {#Ricoh_Signal_AVR_V}
+### `1/V` Set V to the value of 1/V {#Ricoh_Signal_1_V}
+
+Todo: There's a related signal 0/V that isn't always labelled... does this need
+implementation?
+
+### `DB7/N` Set N to the value of DB(7) {#Ricoh_Signal_DB7_N}
 
 ## External CPU Signals
 
