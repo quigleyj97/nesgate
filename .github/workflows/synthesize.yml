@@ -33,6 +33,7 @@ jobs:
       with:
         report-path: './build/results.json'
         suite-folded-report: true
+        group-by: "suite"
       if: always()
     - name: Upload bitstream
       uses: actions/upload-artifact@v4

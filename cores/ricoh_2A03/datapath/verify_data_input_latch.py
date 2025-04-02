@@ -29,11 +29,11 @@ async def test_data_input_latch(dut: SimHandleBase):
 
     dut.adh_bus_enable_DL_ADH.value = True
     await Timer(1, units="fs")
-    assert dut.adl_bus_port.value == 0b00000000
+    assert dut.adh_bus_port.value == 0b00000000
     assert not dut.db_bus_port.value.is_resolvable
     dut.adh_bus_enable_DL_ADH.value = False
 
-    dut.adl_bus_enable_DL_ADH.value = True
+    dut.adl_bus_enable_DL_ADL.value = True
     await Timer(1, units="fs")
     assert dut.adl_bus_port.value == 0b00000000
-    assert not dut.adl_bus_port.value.is_resolvable
+    assert not dut.adh_bus_port.value.is_resolvable
