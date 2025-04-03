@@ -10,6 +10,15 @@ Bitstreams are compiled on each change via GitHub Actions and stored for 90 days
 
 See the [programming section](#HProgramming) for instructions on how to upload the bitstream to your board.
 
+## Current status
+
+### MOS 6502
+
+The 6502 core has substantial portions of the datapath implemented, with a working
+ALU and register file.
+
+![Diagram of currently implemented components](./images/implemented.drawio.svg)
+
 ## Building from source
 
 ### Prerequisites
