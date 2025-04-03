@@ -46,7 +46,7 @@ end entity;
 
 architecture rtl of status_register is
     signal DBZ: std_ulogic;
-    signal register_data: std_ulogic_vector(7 downto 0);
+    signal register_data: std_ulogic_vector(7 downto 0) := (others => '0');
 begin
     DBZ <= not (
         db_bus(1) and
@@ -62,7 +62,7 @@ begin
     db_bus(5) <= '1' when enable_P_DB = '1' else 'Z';
     db_bus(3 downto 0) <= register_data(3 downto 0) when enable_P_DB = '1' else (others => 'Z');
 
-    process(signal_DB0_C, signal_IR5_C, signal_ACR_C)
+    process(signal_DB0_C, signal_IR5_C, signal_ACR_C, db_bus(0), signal_ACR, signal_IR5)
         variable sensitivity: std_ulogic_vector(2 downto 0);
     begin
         sensitivity := signal_DB0_C & signal_IR5_C & signal_ACR_C;
@@ -78,7 +78,7 @@ begin
         end case;
     end process;
 
-    process(signal_DB1_Z, signal_DBZ_Z)
+    process(signal_DB1_Z, signal_DBZ_Z, db_bus(1), DBZ)
         variable sensitivity: std_ulogic_vector(1 downto 0);
     begin
         sensitivity := signal_DB1_Z & signal_DBZ_Z;
@@ -92,7 +92,7 @@ begin
         end case;
     end process;
 
-    process(signal_DB2_I, signal_IR5_I)
+    process(signal_DB2_I, signal_IR5_I, db_bus(2), signal_IR5)
         variable sensitivity: std_ulogic_vector(1 downto 0);
     begin
         sensitivity := signal_DB2_I & signal_IR5_I;
@@ -106,7 +106,7 @@ begin
         end case;
     end process;
 
-    process(signal_DB3_D, signal_IR5_D)
+    process(signal_DB3_D, signal_IR5_D, db_bus(3), signal_IR5)
         variable sensitivity: std_ulogic_vector(1 downto 0);
     begin
         sensitivity := signal_DB3_D & signal_IR5_D;
@@ -120,7 +120,7 @@ begin
         end case;
     end process;
 
-    process(signal_DB6_V, signal_AVR_V, signal_1_V)
+    process(signal_DB6_V, signal_AVR_V, signal_1_V, db_bus(6), signal_AVR, signal_1_V)
         variable sensitivity: std_ulogic_vector(2 downto 0);
     begin
         sensitivity := signal_DB6_V & signal_AVR_V & signal_1_V;
@@ -136,13 +136,13 @@ begin
         end case;
     end process;
 
-    process(signal_DB7_N)
+    process(signal_DB7_N, db_bus(7))
     begin
         case (signal_DB7_N) is
             when '1' =>
                 register_data(7) <= db_bus(7);
             when others =>
-                register_data(7) <= signal_DB7_N;
+                register_data(7) <= register_data(7);
         end case;
     end process;
 end architecture;
