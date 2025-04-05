@@ -20,11 +20,13 @@
     - [ ] Program Counter Select registers
     - [ ] Program Counter registers
     - [ ] Program Counter increment logic
-    - [ ] Address Bus registers
 - [~] @subpage MOS_6502_Datapath
     - [x] @ref index_register - X and Y index registers
     - [x] @ref accumulator
-    - [ ] Bus routings, including prechare and passthrough MOSFETs
-    - [ ] Status register
+    - [~] @ref mos_6502_datapath
+    - [x] Address Bus registers
+    - [ ] Stack pointer
+    - [ ] Gate and charge MOSFETs
+    - [x] @ref status_register
     - [x] @ref data_input_latch
     - [x] @ref data_output_latch

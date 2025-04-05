@@ -2,10 +2,10 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 --! The Accumulator for the 6502
+--! @todo This does not implement the BCD correction circuitry
 entity accumulator is
     port(
         --! @ref Ricoh_2A03_SB
-        --! @todo This does not implement the BCD correction circuitry
         databus_SB: inout std_ulogic_vector(7 downto 0);
         --! @ref Ricoh_2A03_DB
         databus_DB: out std_ulogic_vector(7 downto 0);
