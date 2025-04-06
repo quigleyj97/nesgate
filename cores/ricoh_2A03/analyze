@@ -14,6 +14,7 @@ FILES=(
     "../cores/ricoh_2A03/datapath/data_input_latch.vhdl"
     "../cores/ricoh_2A03/datapath/data_output_latch.vhdl"
     "../cores/ricoh_2A03/datapath/status_register.vhdl"
+    "../cores/ricoh_2A03/datapath/stack_pointer.vhdl"
     "../cores/ricoh_2A03/datapath/core.vhdl"
     "../cores/ricoh_2A03/core.vhdl"
 )

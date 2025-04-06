@@ -34,10 +34,19 @@ by the project
 ### `0/ADL0` {#Ricoh_2A03_Signal_0_ADL0}
 ### `0/ADL1` {#Ricoh_2A03_Signal_0_ADL1}
 ### `0/ADL2` {#Ricoh_2A03_Signal_0_ADL2}
-### `S/ADL` {#Ricoh_2A03_Signal_S_ADL}
-### `SB/S` {#Ricoh_2A03_Signal_SB_S}
-### `S/S` {#Ricoh_2A03_Signal_S_S}
-### `S/SB` {#Ricoh_2A03_Signal_S_SB}
+
+## Stack pointer signals
+
+### `S/ADL` Enable S register output to ADL bus {#Ricoh_2A03_Signal_S_ADL}
+### `SB/S` Load value into S register from SB bus {#Ricoh_2A03_Signal_SB_S}
+### `S/S` Refresh S register value {#Ricoh_2A03_Signal_S_S}
+
+Note - this signal is not implemented by this core. It appears to be necessary
+for the actual register, as-implemented, to keep it's value valid between many
+CPU cycles (since it might be a long time between reads/writes), but that is not
+necessary on FPGA fabric.
+
+### `S/SB` Enable S register output to the SB bus {#Ricoh_2A03_Signal_S_SB}
 
 ## ALU Signals
 
