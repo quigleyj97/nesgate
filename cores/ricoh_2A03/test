@@ -19,5 +19,6 @@ python -m util.run_cocotb data_output_latch cores.ricoh_2A03.datapath.verify_dat
 python -m util.run_cocotb status_register cores.ricoh_2A03.datapath.verify_status_register ./cores/ricoh_2A03/datapath/status_register.vhdl
 python -m util.run_cocotb stack_pointer cores.ricoh_2A03.datapath.verify_stack_pointer ./cores/ricoh_2A03/datapath/stack_pointer.vhdl
 python -m util.run_cocotb adh_open_drain_mosfet cores.ricoh_2A03.datapath.verify_adh_open_drain_mosfet ./cores/ricoh_2A03/datapath/adh_open_drain_mosfet.vhdl
+python -m util.run_cocotb adl_open_drain_mosfet cores.ricoh_2A03.datapath.verify_adl_open_drain_mosfet ./cores/ricoh_2A03/datapath/adl_open_drain_mosfet.vhdl
 
 popd
