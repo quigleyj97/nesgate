@@ -20,6 +20,7 @@ FILES=(
     "../cores/ricoh_2A03/datapath/adh_open_drain_mosfet.vhdl"
     "../cores/ricoh_2A03/datapath/adl_open_drain_mosfet.vhdl"
     "../cores/ricoh_2A03/datapath/pass_mosfet.vhdl"
+    "../cores/ricoh_2A03/datapath/program_counter_low.vhdl"
     "../cores/ricoh_2A03/core.vhdl"
 )
 
