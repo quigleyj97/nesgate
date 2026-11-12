@@ -13,15 +13,24 @@ CONTAINER_RUNNER=docker
 TRELLIS_CONTAINER_NAME=hdlc/prjtrellis
 TRELLIS_NEXTPNR_CONTAINER_NAME=hdlc/nextpnr:ecp5
 GHDL_YOSYS_CONTAINER_NAME=hdlc/ghdl:yosys
-CONTAINER_ARGS="--rm -v $BASE_DIR:/src -w /src/build"
-YOSYS="$CONTAINER_RUNNER run $CONTAINER_ARGS $GHDL_YOSYS_CONTAINER_NAME yosys"
-NEXTPNR="$CONTAINER_RUNNER run $CONTAINER_ARGS $TRELLIS_NEXTPNR_CONTAINER_NAME nextpnr-ecp5"
-ECPPACK="$CONTAINER_RUNNER run $CONTAINER_ARGS $TRELLIS_CONTAINER_NAME ecppack"
-export GHDL="ghdl"
+# The hdlc images are amd64-only; this lets them run under emulation on arm64
+CONTAINER_ARGS="--rm --platform linux/amd64 -v $BASE_DIR:/src -w /src/build"
 
-if ! command -v ghdl; then
-    GHDL="$CONTAINER_RUNNER run $CONTAINER_ARGS $GHDL_YOSYS_CONTAINER_NAME ghdl"
-fi
+# Use a natively installed tool (e.g. from OSS CAD Suite) if one is on the
+# PATH, otherwise fall back to running it in a container.
+# Usage: find_tool <binary> <container image>
+find_tool() {
+    if command -v "$1" > /dev/null; then
+        echo "$1"
+    else
+        echo "$CONTAINER_RUNNER run $CONTAINER_ARGS $2 $1"
+    fi
+}
+
+export GHDL=$(find_tool ghdl $GHDL_YOSYS_CONTAINER_NAME)
+YOSYS=$(find_tool yosys $GHDL_YOSYS_CONTAINER_NAME)
+NEXTPNR=$(find_tool nextpnr-ecp5 $TRELLIS_NEXTPNR_CONTAINER_NAME)
+ECPPACK=$(find_tool ecppack $TRELLIS_CONTAINER_NAME)
 
 start_analysis=$(date +%s)
 
@@ -40,7 +49,7 @@ end_analysis=$(date +%s)
 
 python -m util.merge_test_results $start_analysis $end_analysis ./build/**/results.xml
 
-# TODO: Move this into a separate, target-specific script 
+# TODO: Move this into a separate, target-specific script
 IDCODE=0x41113043
 
 # Analyze toplevel
@@ -48,8 +57,11 @@ pushd $BUILD_DIR
     eval "$GHDL -i ../targets/ulx3s_85k.vhdl"
     eval "$GHDL -m toplevel"
 
-    # Synthesize
-    eval "$YOSYS -m ghdl -p 'ghdl toplevel; debug synth_ecp5 -json ./toplevel.ulx3s.json'"
+    # Synthesize. GHDL emits a Verilog netlist for yosys to read, rather than
+    # going through the ghdl-yosys-plugin, which has crashed on this design
+    # (ASSERTION_ERROR in netlists.adb) in some OSS CAD Suite builds.
+    eval "$GHDL --synth --out=verilog toplevel" > ./toplevel.v
+    eval "$YOSYS -p 'read_verilog ./toplevel.v; debug synth_ecp5 -top toplevel -json ./toplevel.ulx3s.json'"
     eval "$NEXTPNR --json ./toplevel.ulx3s.json --textcfg ./toplevel.ulx3s.config --lpf ../targets/ulx3s.lpf --85k --package CABGA381"
     eval "$ECPPACK ./toplevel.ulx3s.config ./toplevel.ulx3s.bit --idcode $IDCODE"
 popd

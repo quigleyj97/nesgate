@@ -1,0 +1,11 @@
+[tools]
+python = "3.12"
+
+[env]
+# OSS CAD Suite's `environment` script sets VIRTUAL_ENV to the suite itself;
+# without this pipenv would try to use the suite instead of its own venv.
+PIPENV_IGNORE_VIRTUALENVS = "1"
+# cocotb 1.9.x links its libraries with Python's `-bundle` linker flags on
+# macOS, which can't be linked against each other. Build them as dylibs.
+LDSHARED = "cc -dynamiclib -undefined dynamic_lookup -arch arm64 -mmacosx-version-min=11.0 -Wl,-headerpad,40"
+LDCXXSHARED = "c++ -dynamiclib -undefined dynamic_lookup -arch arm64 -mmacosx-version-min=11.0 -Wl,-headerpad,40"

@@ -16,17 +16,25 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
       with:
-        python-version: "3.10"
-    - name: Install ghdl
-      run: sudo apt-get install -y ghdl
+        python-version: "3.12"
+    # Install the Python deps before OSS CAD Suite goes on the PATH, so
+    # pipenv builds its venv from setup-python's interpreter, not the suite's.
     - name: Install pipenv
       run: |
         pip install pipenv
-        pipenv install
+        pipenv install --deploy
+    # Keep this version in sync with the OSS CAD Suite release used locally.
+    - name: Install OSS CAD Suite
+      uses: YosysHQ/setup-oss-cad-suite@v3
+      with:
+        version: "2026-11-10"
     - name: Run FPGA synthesis
+      env:
+        # The suite sets VIRTUAL_ENV to itself; make pipenv use its own venv.
+        PIPENV_IGNORE_VIRTUALENVS: "1"
       run: pipenv run "`pwd`/synth"
     - name: Publish Test Report
       uses: ctrf-io/github-test-reporter@v1

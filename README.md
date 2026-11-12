@@ -23,16 +23,32 @@ ALU and register file.
 
 ### Prerequisites
 
-The easiest way to build this project is with Docker. The makefiles are
-already configured to do this, but you'll need Docker installed for them to
-work. I highly recommend sticking with Docker here, as building HDL tools from
-source (especially for macOS) is a painful adventure through the Dungeon
-Dimensions. You might even become unbearably knurd.
+The recommended toolchain is [OSS CAD Suite](https://github.com/YosysHQ/oss-cad-suite-build),
+which bundles GHDL, Yosys, nextpnr-ecp5 and ecppack for Linux and macOS
+(including Apple Silicon). CI uses the release pinned in
+`.github/workflows/synthesize.yml`, so use the same one locally. Building HDL
+tools from source (especially for macOS) is a painful adventure through the
+Dungeon Dimensions. You might even become unbearably knurd.
+
+You'll also need Python 3.12 and pipenv. The repo includes a `mise.toml` that
+pins Python and sets a few environment variables needed on macOS, so the
+easiest route is [mise](https://mise.jdx.dev):
 
 ```
-$ pipenv shell
-$ ./synth
+$ mise install && pip install pipenv
+$ source /path/to/oss-cad-suite/environment
+$ pipenv install
+$ pipenv run ./synth
 ```
+
+If you don't use mise, set `PIPENV_IGNORE_VIRTUALENVS=1` after sourcing the
+OSS CAD Suite environment (it sets `VIRTUAL_ENV` to itself). On macOS, also set
+`LDSHARED` and `LDCXXSHARED` as in `mise.toml` before `pipenv install`, or
+cocotb will fail to build.
+
+If a tool isn't found on your PATH, `synth` falls back to running it in a
+Docker container. Those images are amd64-only, so they're slow under emulation
+on Apple Silicon.
 
 ### Programming
 
