@@ -4,9 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-# Pinned to 1.9: cocotb 2.x moved the runner to cocotb_tools and removed
-# BinaryValue, which the testbenches still use.
-cocotb = "~=1.9.2"
+cocotb = "~=2.1"
 pytest = "*"
 
 [dev-packages]

@@ -7,11 +7,11 @@ async def test_adder_hold_register(dut: SimHandleBase):
     # Verify the register can load a value
     dut.data_in.value = 0b00000000
     dut.load.value = False
-    await Timer(1, units="fs")
+    await Timer(1, unit="fs")
     dut.load.value = True
-    await Timer(1, units="fs")
+    await Timer(1, unit="fs")
     dut.load.value = False
-    await Timer(1, units="fs")
+    await Timer(1, unit="fs")
     assert dut.register_data.value == 0b00000000
 
     # Assert that the register outputs open bus when the enable signal is low
@@ -21,19 +21,19 @@ async def test_adder_hold_register(dut: SimHandleBase):
     dut.adl_bus_enable_ADD_ADL.value = True
     dut.sb_bus_enable_ADD_SB_0_6.value = True
     dut.sb_bus_enable_ADD_SB_7.value = True
-    await Timer(1, units="fs")
+    await Timer(1, unit="fs")
 
     assert dut.sb_bus_port.value == 0b00000000
     assert dut.adl_bus_port.value == 0b00000000
 
     # Verify the bit-level outputs when only parts of the SB bus output are enabled
     dut.sb_bus_enable_ADD_SB_0_6.value = False
-    await Timer(1, units="fs")
-    assert dut.sb_bus_port.value.binstr.lower() == "0zzzzzzz"
+    await Timer(1, unit="fs")
+    assert str(dut.sb_bus_port.value).lower() == "0zzzzzzz"
 
     dut.sb_bus_enable_ADD_SB_0_6.value = True
     dut.sb_bus_enable_ADD_SB_7.value = False
-    await Timer(1, units="fs")
+    await Timer(1, unit="fs")
 
-    assert dut.sb_bus_port.value.binstr.lower() == "z0000000"
+    assert str(dut.sb_bus_port.value).lower() == "z0000000"
     

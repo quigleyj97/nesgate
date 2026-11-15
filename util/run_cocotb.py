@@ -1,7 +1,7 @@
 import sys
 import os
 from pathlib import Path
-from cocotb.runner import get_runner
+from cocotb_tools.runner import get_runner
 
 sim = os.getenv("SIM", "ghdl")
 root_path = Path(__file__).resolve().parent.parent

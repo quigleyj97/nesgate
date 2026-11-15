@@ -8,7 +8,7 @@ NESgate is a VHDL implementation of the NES, targeting the ULX3S (ECP5-85k) FPGA
 
 ## Toolchain and commands
 
-You need OSS CAD Suite (GHDL, Yosys, nextpnr-ecp5, ecppack). Use the release pinned in `.github/workflows/synthesize.yml`. You also need Python 3.12 with pipenv. `mise.toml` sets the env vars that are needed on macOS: `PIPENV_IGNORE_VIRTUALENVS=1`, because the suite's `environment` script hijacks `VIRTUAL_ENV`, and `LDSHARED`/`LDCXXSHARED`, so cocotb 1.9 builds dylibs on arm64.
+You need OSS CAD Suite (GHDL, Yosys, nextpnr-ecp5, ecppack). Use the release pinned in `.github/workflows/synthesize.yml`. You also need Python 3.12 with pipenv. `mise.toml` sets `PIPENV_IGNORE_VIRTUALENVS=1`, which is needed on macOS because the suite's `environment` script hijacks `VIRTUAL_ENV`.
 
 ```
 source /path/to/oss-cad-suite/environment
@@ -28,7 +28,7 @@ pipenv run python -m util.run_cocotb pass_mosfet cores.ricoh_2A03.datapath.verif
 
 Set `WAVE=1` to dump a VCD. Each testbench builds into `build/<toplevel_entity>/`. The simulator defaults to GHDL and can be overridden with `SIM`.
 
-cocotb is pinned to `~=1.9.2`. The testbenches use the 1.x API (`cocotb.runner`, `BinaryValue`, `units=` kwargs), which 2.x removed, so don't upgrade it.
+cocotb is pinned to `~=2.1`. Use the 2.x API: `cocotb_tools.runner`, `cocotb.types.LogicArray` (not `BinaryValue`), `unit=` (not `units=`), `str(value)` (not `.binstr`), and `cocotb.start_soon`.
 
 ## Structure
 

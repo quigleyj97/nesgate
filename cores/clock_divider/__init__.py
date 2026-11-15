@@ -5,8 +5,8 @@ from cocotb.triggers import RisingEdge, NextTimeStep
 
 @cocotb.test()
 async def verify_clock_division(dut: SimHandleBase):
-    clk = Clock(dut.clk, 1, units='ns')
-    await cocotb.start(clk.start())
+    clk = Clock(dut.clk, 1, unit='ns')
+    cocotb.start_soon(clk.start())
 
     await RisingEdge(dut.clk)
 

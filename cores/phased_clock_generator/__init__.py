@@ -5,8 +5,8 @@ from cocotb.clock import Clock
 
 @cocotb.test()
 async def verify_clock_phases(dut: SimHandleBase):
-    clk = Clock(dut.clk_in, 2, units='fs')
-    await cocotb.start(clk.start())
+    clk = Clock(dut.clk_in, 2, unit='fs')
+    cocotb.start_soon(clk.start())
     await FallingEdge(dut.clk_in)
     await NextTimeStep()
 

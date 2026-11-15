@@ -9,22 +9,22 @@ async def test_data_output_latch(dut: SimHandleBase):
     dut.phi1.value = False
     dut.phi2.value = False
     dut.signal_R_NOT_W.value = True
-    await Timer(1, units="fs")
+    await Timer(1, unit="fs")
     dut.phi1.value = True
-    await Timer(1, units="fs")
+    await Timer(1, unit="fs")
     dut.phi1.value = False
-    await Timer(1, units="fs")
+    await Timer(1, unit="fs")
     assert dut.register_data.value == 0b00000000
     # Assert that the latch outputs open bus when the enable signal is low
     assert not dut.data_out.value.is_resolvable
 
     dut.phi2.value = True
-    await Timer(1, units="fs")
+    await Timer(1, unit="fs")
     # Check that the output doesn't enable until R_NOT_W is low
     assert not dut.data_out.value.is_resolvable
     dut.signal_R_NOT_W.value = False
     dut.phi2.value = False
-    await Timer(1, units="fs")
+    await Timer(1, unit="fs")
     dut.phi2.value = True
-    await Timer(1, units="fs")
+    await Timer(1, unit="fs")
     assert dut.data_out.value == 0b00000000

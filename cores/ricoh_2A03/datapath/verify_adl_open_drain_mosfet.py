@@ -1,6 +1,6 @@
 import cocotb
-from cocotb.triggers import Timer
 from cocotb.handle import SimHandleBase
+from cocotb.triggers import Timer
 
 # The ADL open drain MOSFETs can only pull bits 0-2 of the ADL bus low, one
 # control signal per bit. Bits 3-7 have no MOSFET and must never be driven.
@@ -20,11 +20,11 @@ async def check(dut: SimHandleBase, active: set[str], reason: str):
     """
     for signal in SIGNAL_FOR_BIT.values():
         getattr(dut, signal).value = 1 if signal in active else 0
-    await Timer(1, units="fs")
+    await Timer(1, unit="fs")
 
     # GHDL's VPI doesn't expose individual elements of a vector port, so read
-    # the whole bus and index into its string form. binstr is MSB first.
-    bus = dut.adl_bus.value.binstr
+    # the whole bus and index into its string form, which is MSB first.
+    bus = str(dut.adl_bus.value)
     mismatches = []
     for bit in range(8):
         signal = SIGNAL_FOR_BIT.get(bit)
