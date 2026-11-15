@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 """Smoke tests for the datapath core.
 
 These check the wiring between the subunits rather than re-testing each one,
@@ -6,8 +8,11 @@ when it isn't enabled, and the bus resolves to whichever one is driving.
 """
 
 import cocotb
-from cocotb.handle import Force, Release, SimHandleBase
+from cocotb.handle import Force, Release
 from cocotb.triggers import Timer
+
+if TYPE_CHECKING:
+    from mos_6502_datapath import Mos6502Datapath as DUT
 
 CONTROL_SIGNALS = [
     "phi1",
@@ -47,7 +52,7 @@ CONTROL_SIGNALS = [
 BUSES = ["databus_SB", "databus_DB", "databus_ADH", "databus_ADL"]
 
 
-async def reset(dut: SimHandleBase):
+async def reset(dut: "DUT"):
     """Deassert every control signal, and stop driving the buses."""
     for name in CONTROL_SIGNALS:
         getattr(dut, name).value = 0
@@ -65,7 +70,7 @@ async def pulse(signal):
     await Timer(1, unit="ns")
 
 
-async def load_from_sb(dut: SimHandleBase, load, value: int):
+async def load_from_sb(dut: "DUT", load, value: int):
     """Drive SB from outside the core, and pulse a register's load signal."""
     dut.databus_SB.value = Force(value)
     await Timer(1, unit="ns")
@@ -75,7 +80,7 @@ async def load_from_sb(dut: SimHandleBase, load, value: int):
 
 
 @cocotb.test()
-async def test_buses_float_when_idle(dut: SimHandleBase):
+async def test_buses_float_when_idle(dut: "DUT"):
     """With nothing enabled, no subunit drives any of the internal buses."""
     await reset(dut)
     for name in BUSES:
@@ -83,7 +88,7 @@ async def test_buses_float_when_idle(dut: SimHandleBase):
 
 
 @cocotb.test()
-async def test_registers_share_sb(dut: SimHandleBase):
+async def test_registers_share_sb(dut: "DUT"):
     """X, Y and AC all sit on SB, and only the enabled one drives it."""
     await reset(dut)
     await load_from_sb(dut, dut.load_SB_X, 0x5A)
@@ -104,7 +109,7 @@ async def test_registers_share_sb(dut: SimHandleBase):
 
 
 @cocotb.test()
-async def test_accumulator_to_db(dut: SimHandleBase):
+async def test_accumulator_to_db(dut: "DUT"):
     """The accumulator can drive DB, which the status register also sits on."""
     await reset(dut)
     await load_from_sb(dut, dut.load_SB_AC, 0xC3)
@@ -114,7 +119,7 @@ async def test_accumulator_to_db(dut: SimHandleBase):
 
 
 @cocotb.test()
-async def test_address_registers(dut: SimHandleBase):
+async def test_address_registers(dut: "DUT"):
     """ABH and ABL load from ADH and ADL during phi1, and drive the address pins."""
     await reset(dut)
     dut.databus_ADH.value = Force(0x12)
@@ -138,7 +143,7 @@ async def test_address_registers(dut: SimHandleBase):
 
 
 @cocotb.test()
-async def test_data_input_latch(dut: SimHandleBase):
+async def test_data_input_latch(dut: "DUT"):
     """The data input latch loads from the data pins on phi2, and drives DB and ADL."""
     await reset(dut)
     dut.data.value = Force(0x77)

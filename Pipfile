@@ -8,6 +8,10 @@ cocotb = "~=2.1"
 pytest = "*"
 
 [dev-packages]
+# Not on PyPI: the PyPI "copra" is an unrelated package. Generates DUT type stubs.
+copra = {git = "https://github.com/cocotb/copra.git", ref = "25635da39c3940aa166f09cb2ca9a943632d677c"}
+ruff = "*"
+pyright = {extras = ["nodejs"], version = "*"}
 
 [requires]
 python_version = "3.12"

@@ -1,10 +1,15 @@
+from typing import TYPE_CHECKING
+
 import cocotb
-from cocotb.triggers import Timer, FallingEdge
-from cocotb.handle import SimHandleBase
 from cocotb.clock import Clock
 
+if TYPE_CHECKING:
+    from mos_6502 import Mos6502 as DUT
+from cocotb.triggers import FallingEdge, Timer
+
+
 @cocotb.test()
-async def run_core(dut: SimHandleBase):
+async def run_core(dut: "DUT"):
     clock = Clock(dut.clock, 2, unit="fs")
     phi2 = Clock(dut.phi2, 2, unit="fs")
     cocotb.start_soon(clock.start())

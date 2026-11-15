@@ -25,4 +25,7 @@ python -m util.run_cocotb pass_mosfet cores.ricoh_2A03.datapath.verify_pass_mosf
 python -m util.run_cocotb program_counter_low cores.ricoh_2A03.datapath.verify_program_counter_low ./cores/ricoh_2A03/datapath/program_counter_low.vhdl
 python -m util.run_cocotb mos_6502_datapath cores.ricoh_2A03.datapath.verify_datapath ./cores/ricoh_2A03/datapath/index_register.vhdl ./cores/ricoh_2A03/datapath/accumulator.vhdl ./cores/ricoh_2A03/datapath/data_input_latch.vhdl ./cores/ricoh_2A03/datapath/data_output_latch.vhdl ./cores/ricoh_2A03/datapath/status_register.vhdl ./cores/ricoh_2A03/datapath/core.vhdl
 
+# CPU smoke test
+python -m util.run_cocotb mos_6502 cores.ricoh_2A03.sim_core ./cores/ricoh_2A03/alu/alu.vhdl ./cores/ricoh_2A03/alu/adder_hold_register.vhdl ./cores/ricoh_2A03/alu/a_input_register.vhdl ./cores/ricoh_2A03/alu/b_input_register.vhdl ./cores/ricoh_2A03/alu/core.vhdl ./cores/ricoh_2A03/datapath/index_register.vhdl ./cores/ricoh_2A03/datapath/accumulator.vhdl ./cores/ricoh_2A03/datapath/data_input_latch.vhdl ./cores/ricoh_2A03/datapath/data_output_latch.vhdl ./cores/ricoh_2A03/datapath/status_register.vhdl ./cores/ricoh_2A03/datapath/stack_pointer.vhdl ./cores/ricoh_2A03/datapath/precharge_mosfets.vhdl ./cores/ricoh_2A03/datapath/core.vhdl ./cores/ricoh_2A03/datapath/adh_open_drain_mosfet.vhdl ./cores/ricoh_2A03/datapath/adl_open_drain_mosfet.vhdl ./cores/ricoh_2A03/datapath/pass_mosfet.vhdl ./cores/ricoh_2A03/datapath/program_counter_low.vhdl ./cores/ricoh_2A03/core.vhdl
+
 popd

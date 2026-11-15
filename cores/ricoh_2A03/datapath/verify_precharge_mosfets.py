@@ -1,9 +1,13 @@
+from typing import TYPE_CHECKING
+
 import cocotb
 from cocotb.triggers import Timer
-from cocotb.handle import SimHandleBase
+
+if TYPE_CHECKING:
+    from precharge_mosfets import PrechargeMosfets as DUT
 
 @cocotb.test()
-async def test_precharge_mosfets(dut: SimHandleBase):
+async def test_precharge_mosfets(dut: "DUT"):
     """Test the precharge MOSFETs functionality"""
     
     # Test when phi2 is low (0)

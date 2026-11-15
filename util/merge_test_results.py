@@ -1,9 +1,11 @@
-from cocotb import __version__ as cocotb_version
-from uuid import uuid4
-from datetime import datetime
-from xml.etree import ElementTree as ET
 import json
 import sys
+from datetime import datetime
+from uuid import uuid4
+from xml.etree import ElementTree as ET
+
+from cocotb import __version__ as cocotb_version
+
 
 def read_results(start_ts: int, stop_ts: int, files: list[str]):
     tests = []
@@ -14,6 +16,9 @@ def read_results(start_ts: int, stop_ts: int, files: list[str]):
             document = ET.parse(file_handle)
             for test in document.findall('.//testcase'):
                 test_details = dict(test.items())
+                # Copra's stub generator runs as a test; it isn't one of ours.
+                if test_details["classname"].startswith("copra."):
+                    continue
                 has_failure = test.find("failure") is not None
                 if has_failure:
                     n_failures += 1

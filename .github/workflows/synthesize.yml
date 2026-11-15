@@ -25,7 +25,8 @@ jobs:
     - name: Install pipenv
       run: |
         pip install pipenv
-        pipenv install --deploy
+        # --dev for Ruff, Pyright, and Copra (DUT type stubs), which synth uses.
+        pipenv install --deploy --dev
     # Keep this version in sync with the OSS CAD Suite release used locally.
     - name: Install OSS CAD Suite
       uses: YosysHQ/setup-oss-cad-suite@v3

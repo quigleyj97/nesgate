@@ -1,9 +1,13 @@
+from typing import TYPE_CHECKING
+
 import cocotb
-from cocotb.handle import SimHandleBase
 from cocotb.triggers import Timer
 
+if TYPE_CHECKING:
+    from status_register import StatusRegister as DUT
+
 @cocotb.test()
-async def test_status_register_data_bus(dut: SimHandleBase):
+async def test_status_register_data_bus(dut: "DUT"):
     # Verify the register can load a value
     set_signals_low(dut)
     dut.signal_DB0_C.value = True
@@ -40,7 +44,7 @@ async def test_status_register_data_bus(dut: SimHandleBase):
     await Timer(1, unit="fs")
 
 @cocotb.test()
-async def test_status_register_alu_flags(dut: SimHandleBase):
+async def test_status_register_alu_flags(dut: "DUT"):
     set_signals_low(dut)
     dut.signal_ACR.value = True
     dut.signal_AVR.value = True
@@ -54,7 +58,7 @@ async def test_status_register_alu_flags(dut: SimHandleBase):
     assert dut.register_data.value == 0b0000_0000
 
 @cocotb.test()
-async def test_bit_5_goes_high_when_enabled(dut: SimHandleBase):
+async def test_bit_5_goes_high_when_enabled(dut: "DUT"):
     set_signals_low(dut)
     dut.enable_P_DB.value = True
     await Timer(1, unit="fs")
@@ -64,7 +68,7 @@ async def test_bit_5_goes_high_when_enabled(dut: SimHandleBase):
     assert not dut.db_bus.value.is_resolvable
 
 @cocotb.test()
-async def test_status_register_ir5(dut: SimHandleBase):
+async def test_status_register_ir5(dut: "DUT"):
     set_signals_low(dut)
     dut.signal_IR5.value = True
     dut.signal_IR5_C.value = True
@@ -76,7 +80,7 @@ async def test_status_register_ir5(dut: SimHandleBase):
     await Timer(1, unit="fs")
     assert dut.register_data.value == 0b0000_0000
 
-def set_signals_low(dut: SimHandleBase):
+def set_signals_low(dut: "DUT"):
     dut.signal_DB0_C.value = False
     dut.signal_IR5_C.value = False
     dut.signal_ACR_C.value = False

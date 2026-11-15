@@ -1,11 +1,16 @@
+from typing import TYPE_CHECKING
+
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, FallingEdge, Timer
-from cocotb.types import LogicArray
 from cocotb.handle import Force
+from cocotb.triggers import FallingEdge, RisingEdge, Timer
+from cocotb.types import LogicArray
+
+if TYPE_CHECKING:
+    from program_counter_low import ProgramCounterLow as DUT
 
 @cocotb.test()
-async def test_program_counter_low_reset(dut):
+async def test_program_counter_low_reset(dut: "DUT"):
     """Test that program counter starts at zero after initialization"""
     
     clock = Clock(dut.phi2, 10, unit="ns")
@@ -32,7 +37,7 @@ async def test_program_counter_low_reset(dut):
     assert dut.bus_DB.value == 0, f"Expected PCL to be 0, got {dut.bus_DB.value}"
 
 @cocotb.test()
-async def test_program_counter_increment(dut):
+async def test_program_counter_increment(dut: "DUT"):
     """Test program counter increment operation"""
     
     clock = Clock(dut.phi2, 10, unit="ns")
@@ -77,7 +82,7 @@ async def test_program_counter_increment(dut):
     assert dut.bus_DB.value == 2, f"Expected PCL to be 2 after increment, got {dut.bus_DB.value}"
 
 @cocotb.test()
-async def test_program_counter_load_from_adl(dut):
+async def test_program_counter_load_from_adl(dut: "DUT"):
     """Test loading PCL from address low bus"""
     
     clock = Clock(dut.phi2, 10, unit="ns")
@@ -109,7 +114,7 @@ async def test_program_counter_load_from_adl(dut):
     assert dut.bus_DB.value == 0x42, f"Expected PCL to be 0x42 after load, got {dut.bus_DB.value}"
 
 @cocotb.test()
-async def test_program_counter_output_to_buses(dut):
+async def test_program_counter_output_to_buses(dut: "DUT"):
     """Test PCL outputs to both DB and ADL buses"""
     
     clock = Clock(dut.phi2, 10, unit="ns")
@@ -147,7 +152,7 @@ async def test_program_counter_output_to_buses(dut):
     assert dut.bus_ADL.value == 0xA5, f"Expected ADL to be 0xA5, got {dut.bus_ADL.value}"
 
 @cocotb.test()
-async def test_carry_out(dut):
+async def test_carry_out(dut: "DUT"):
     """Test carry out signal when PCL overflows from 0xFF to 0x00"""
     
     clock = Clock(dut.phi2, 10, unit="ns")

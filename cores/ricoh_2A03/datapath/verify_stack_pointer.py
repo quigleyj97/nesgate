@@ -1,10 +1,14 @@
+from typing import TYPE_CHECKING
+
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, Timer
-from cocotb.handle import SimHandleBase
+
+if TYPE_CHECKING:
+    from stack_pointer import StackPointer as DUT
 
 @cocotb.test()
-async def test_stack_pointer(dut: SimHandleBase):
+async def test_stack_pointer(dut: "DUT"):
     """Test the stack pointer behavior"""
 
     cocotb.start_soon(Clock(dut.metaclock, 1, unit="ns").start())

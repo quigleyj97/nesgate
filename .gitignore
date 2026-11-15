@@ -1,4 +1,5 @@
 build
+typings
 __pycache__
 *.pyc
 docs

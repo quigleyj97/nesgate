@@ -1,10 +1,14 @@
+from typing import TYPE_CHECKING
+
 import cocotb
-from cocotb.handle import SimHandleBase
-from cocotb.triggers import Timer
 from cocotb.clock import Clock
+from cocotb.triggers import Timer
+
+if TYPE_CHECKING:
+    from b_input_register import BInputRegister as DUT
 
 @cocotb.test()
-async def verify_b_input_register(dut: SimHandleBase):
+async def verify_b_input_register(dut: "DUT"):
     clk = Clock(dut.metaclock, 2, unit="fs")
     cocotb.start_soon(clk.start())
     dut.control_db_add.value = 1

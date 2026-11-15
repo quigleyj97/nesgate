@@ -1,6 +1,10 @@
+from typing import TYPE_CHECKING
+
 import cocotb
-from cocotb.handle import SimHandleBase
 from cocotb.triggers import Timer
+
+if TYPE_CHECKING:
+    from adl_open_drain_mosfet import AdlOpenDrainMosfet as DUT
 
 # The ADL open drain MOSFETs can only pull bits 0-2 of the ADL bus low, one
 # control signal per bit. Bits 3-7 have no MOSFET and must never be driven.
@@ -11,7 +15,7 @@ SIGNAL_FOR_BIT = {
 }
 
 
-async def check(dut: SimHandleBase, active: set[str], reason: str):
+async def check(dut: "DUT", active: set[str], reason: str):
     """Assert the given control signals, then check every bit of the ADL bus.
 
     A bit should be pulled low ('0') only while its control signal is active,
@@ -45,7 +49,7 @@ async def check(dut: SimHandleBase, active: set[str], reason: str):
 
 
 @cocotb.test()
-async def test_adl_open_drain_mosfet(dut: SimHandleBase):
+async def test_adl_open_drain_mosfet(dut: "DUT"):
     """Test the ADL open drain MOSFET functionality"""
     await check(dut, set(),
                 "With no signals active, the MOSFETs must not drive the bus")

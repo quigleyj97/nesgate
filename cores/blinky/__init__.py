@@ -1,10 +1,14 @@
+from typing import TYPE_CHECKING
+
 import cocotb
-from cocotb.handle import SimHandleBase
-from cocotb.triggers import Timer, FallingEdge
 from cocotb.clock import Clock
+from cocotb.triggers import FallingEdge, Timer
+
+if TYPE_CHECKING:
+    from blinky import Blinky as DUT
 
 @cocotb.test()
-async def verify_blinky(dut: SimHandleBase):
+async def verify_blinky(dut: "DUT"):
     clk = Clock(dut.clk, 2, unit='fs')
     cocotb.start_soon(clk.start())
     assert dut.led.value == 0

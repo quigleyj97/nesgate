@@ -1,10 +1,14 @@
+from typing import TYPE_CHECKING
+
 import cocotb
-from cocotb.handle import SimHandleBase
-from cocotb.triggers import FallingEdge, NextTimeStep
 from cocotb.clock import Clock
+from cocotb.triggers import FallingEdge, NextTimeStep
+
+if TYPE_CHECKING:
+    from phased_clock_generator import PhasedClockGenerator as DUT
 
 @cocotb.test()
-async def verify_clock_phases(dut: SimHandleBase):
+async def verify_clock_phases(dut: "DUT"):
     clk = Clock(dut.clk_in, 2, unit='fs')
     cocotb.start_soon(clk.start())
     await FallingEdge(dut.clk_in)

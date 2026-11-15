@@ -1,10 +1,14 @@
+from typing import TYPE_CHECKING
+
 import cocotb
-from cocotb.triggers import Timer
-from cocotb.handle import SimHandleBase
 from cocotb.handle import Release
+from cocotb.triggers import Timer
+
+if TYPE_CHECKING:
+    from accumulator import Accumulator as DUT
 
 @cocotb.test()
-async def test_accumulator_register(dut: SimHandleBase):
+async def test_accumulator_register(dut: "DUT"):
     # Verify the register can load a value
     dut.databus_SB.value = 0b00000000
     dut.load_SB_AC.value = False

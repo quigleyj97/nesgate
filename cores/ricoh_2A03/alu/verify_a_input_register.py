@@ -1,9 +1,13 @@
+from typing import TYPE_CHECKING
+
 import cocotb
-from cocotb.handle import SimHandleBase
 from cocotb.triggers import Timer
 
+if TYPE_CHECKING:
+    from a_input_register import AInputRegister as DUT
+
 @cocotb.test()
-async def verify_a_input_register(dut: SimHandleBase):
+async def verify_a_input_register(dut: "DUT"):
     # Verify the register can load a value
     dut.data_in_SB.value = 0b11111111
     dut.load_SB_ADD.value = True

@@ -1,9 +1,13 @@
+from typing import TYPE_CHECKING
+
 import cocotb
 from cocotb.triggers import Timer
-from cocotb.handle import SimHandleBase
+
+if TYPE_CHECKING:
+    from pass_mosfet import PassMosfet as DUT
 
 @cocotb.test()
-async def test_pass_mosfet(dut: SimHandleBase):
+async def test_pass_mosfet(dut: "DUT"):
     """Test the pass MOSFET functionality"""
     
     # Initialize test values

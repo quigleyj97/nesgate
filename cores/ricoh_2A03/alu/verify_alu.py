@@ -1,9 +1,13 @@
+from typing import TYPE_CHECKING
+
 import cocotb
-from cocotb.handle import SimHandleBase
 from cocotb.triggers import Timer
 
+if TYPE_CHECKING:
+    from mos_6502_alu import Mos6502Alu as DUT
+
 @cocotb.test
-async def verify_alu_can_handle_1_and_1(dut: SimHandleBase):
+async def verify_alu_can_handle_1_and_1(dut: "DUT"):
     dut.a.value = 0b00000001
     dut.b.value = 0b00000001
     dut.enable_sum_SUMS.value = True
@@ -60,7 +64,7 @@ async def verify_alu_can_handle_1_and_1(dut: SimHandleBase):
     assert dut.half_carry_HC.value == False, "ALU half carry is incorrect"
 
 @cocotb.test
-async def verify_alu_carry_in(dut: SimHandleBase):
+async def verify_alu_carry_in(dut: "DUT"):
     dut.a.value = 0b00000001
     dut.b.value = 0b00000001
     dut.carry_in_IADDC.value = True
@@ -75,7 +79,7 @@ async def verify_alu_carry_in(dut: SimHandleBase):
     assert dut.result.value == 0b00000011, "ALU failed to add 1 + 1 + C"
 
 @cocotb.test
-async def verify_alu_carry_out(dut: SimHandleBase):
+async def verify_alu_carry_out(dut: "DUT"):
     dut.a.value = 0b11111111
     dut.b.value = 0b00000010
     dut.carry_in_IADDC.value = False
@@ -91,7 +95,7 @@ async def verify_alu_carry_out(dut: SimHandleBase):
     assert dut.carry_out_ACR.value == True, "ALU failed to set carry out bit"
 
 @cocotb.test
-async def verify_alu_overflow(dut: SimHandleBase):
+async def verify_alu_overflow(dut: "DUT"):
     dut.a.value = 0x7F
     dut.b.value = 0x01
     dut.carry_in_IADDC.value = False

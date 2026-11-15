@@ -12,11 +12,11 @@ You need OSS CAD Suite (GHDL, Yosys, nextpnr-ecp5, ecppack). Use the release pin
 
 ```
 source /path/to/oss-cad-suite/environment
-pipenv install
-pipenv run ./synth          # analyze + test every core, then synthesize the bitstream
+pipenv install --dev
+pipenv run ./synth          # lint, analyze + test + type-check every core, then synthesize the bitstream
 ```
 
-`synth` wipes `build/`, runs every core's `./analyze $BUILD_DIR`, then every core's `./test $BASE_DIR`, and merges the cocotb `results.xml` files into `build/results.json` (CTRF format, consumed by CI). It then runs every core's `./check $BUILD_DIR`, which fails the build if any entity doesn't compile or doesn't synthesize on its own (e.g. an inferred latch), even if the toplevel doesn't use it yet. Finally it synthesizes `targets/ulx3s_85k.vhdl`; Yosys flattens the design and runs `tribuf -logic` so the shared `'Z'` buses become muxes, and treats `conflicting drivers` warnings as errors. The output is `build/toplevel.ulx3s.bit`. Any tool missing from PATH falls back to an amd64 `hdlc/*` Docker image.
+`synth` wipes `build/`, runs `ruff check .`, runs every core's `./analyze $BUILD_DIR`, then every core's `./test $BASE_DIR`, and merges the cocotb `results.xml` files into `build/results.json` (CTRF format, consumed by CI). Then it runs `pyright`, which needs the DUT stubs the tests just wrote. Ruff (`ruff.toml`) and Pyright (`pyrightconfig.json`) use the same configs as the Ruff and Pylance VS Code extensions. It then runs every core's `./check $BUILD_DIR`, which fails the build if any entity doesn't compile or doesn't synthesize on its own (e.g. an inferred latch), even if the toplevel doesn't use it yet. Finally it synthesizes `targets/ulx3s_85k.vhdl`; Yosys flattens the design and runs `tribuf -logic` so the shared `'Z'` buses become muxes, and treats `conflicting drivers` warnings as errors. The output is `build/toplevel.ulx3s.bit`. Any tool missing from PATH falls back to an amd64 `hdlc/*` Docker image.
 
 Run a single testbench from the repo root (GHDL must be on PATH):
 
@@ -26,7 +26,7 @@ pipenv run python -m util.run_cocotb <toplevel_entity> <python.test.module> <vhd
 pipenv run python -m util.run_cocotb pass_mosfet cores.ricoh_2A03.datapath.verify_pass_mosfet ./cores/ricoh_2A03/datapath/pass_mosfet.vhdl
 ```
 
-Set `WAVE=1` to dump a VCD. Each testbench builds into `build/<toplevel_entity>/`. The simulator defaults to GHDL and can be overridden with `SIM`.
+Set `WAVE=1` to dump a VCD. With the dev packages installed, every testbench run also writes a DUT type stub to `typings/<toplevel_entity>.pyi` with [Copra](https://github.com/cocotb/copra), for Pylance and Pyright; set `COPRA=0` to skip it. `typings/` is gitignored, so on a fresh clone run the tests once (e.g. `pipenv run ./synth`) before the editor can type `dut`. `util/copra_stubs.py` restores the VHDL source casing that GHDL lowercases. Each testbench builds into `build/<toplevel_entity>/`. The simulator defaults to GHDL and can be overridden with `SIM`.
 
 cocotb is pinned to `~=2.1`. Use the 2.x API: `cocotb_tools.runner`, `cocotb.types.LogicArray` (not `BinaryValue`), `unit=` (not `units=`), `str(value)` (not `.binstr`), and `cocotb.start_soon`.
 
@@ -44,7 +44,7 @@ cocotb is pinned to `~=2.1`. Use the 2.x API: `cocotb_tools.runner`, `cocotb.typ
 ### Adding a new entity to a core
 
 1. Add the VHDL file to that core's `analyze` `FILES` list.
-2. Add a `verify_<entity>.py` testbench and a matching line in the core's `test` script.
+2. Add a `verify_<entity>.py` testbench and a matching line in the core's `test` script. Run it once to generate its stub, then annotate the testbench's `dut` with it (`if TYPE_CHECKING: from <entity> import <Entity> as DUT`, then `dut: "DUT"`).
 3. Add the entity to the core's `check` `ENTITIES` list.
 4. Update the Doxygen docs: the subunit's `index.md` and the checklist in `cores/ricoh_2A03/notes/organization.md`.
 

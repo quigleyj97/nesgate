@@ -1,10 +1,18 @@
-import sys
 import os
+import sys
+from importlib.util import find_spec
 from pathlib import Path
+
 from cocotb_tools.runner import get_runner
+
+from util.copra_stubs import restore_casing
 
 sim = os.getenv("SIM", "ghdl")
 root_path = Path(__file__).resolve().parent.parent
+stub_dir = root_path / "typings"
+# Write DUT type stubs (for Pylance and Pyright) whenever Copra, a dev
+# dependency, is installed. Set COPRA=0 to opt out.
+write_stubs = find_spec("copra") is not None and os.getenv("COPRA") != "0"
 
 def run_cocotb_test(toplevel_name: str, test_name: str, sources: list[str]):
     runner = get_runner(sim)
@@ -14,17 +22,29 @@ def run_cocotb_test(toplevel_name: str, test_name: str, sources: list[str]):
         build_dir=root_path / "build" / toplevel_name
     )
 
+    # Copra's autostub module runs first and writes typings/<toplevel>.pyi.
+    test_modules = [test_name]
+    extra_env = {}
+    stub = stub_dir / f"{toplevel_name}.pyi"
+    if write_stubs:
+        test_modules.insert(0, "copra.integration.autostub")
+        extra_env = {"COPRA_STUB_DIR": str(stub_dir), "COPRA_STUB_FILENAME": stub.name}
+
     runner.test(
         hdl_toplevel=toplevel_name,
-        test_module=test_name,
-        plusargs=mk_plusargs(toplevel_name)
+        test_module=test_modules,
+        plusargs=mk_plusargs(toplevel_name),
+        extra_env=extra_env,
     )
+
+    if write_stubs:
+        restore_casing(stub, sources)
 
 def mk_plusargs(test_name: str) -> list[str]:
     plusargs = []
     waveform_file = os.getenv("WAVE")
     if waveform_file is not None:
-        plusargs.append("--vcd=" + ".".join([test_name, "vcd"]))
+        plusargs.append("--vcd=" + f"{test_name}.vcd")
     return plusargs
 
 if __name__ == "__main__":

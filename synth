@@ -32,6 +32,10 @@ YOSYS=$(find_tool yosys $GHDL_YOSYS_CONTAINER_NAME)
 NEXTPNR=$(find_tool nextpnr-ecp5 $TRELLIS_NEXTPNR_CONTAINER_NAME)
 ECPPACK=$(find_tool ecppack $TRELLIS_CONTAINER_NAME)
 
+# Lint the Python testbenches and tooling first, since it's fast. Needs the
+# dev packages (`pipenv install --dev`).
+ruff check .
+
 start_analysis=$(date +%s)
 
 CORES=()
@@ -59,6 +63,10 @@ done
 end_analysis=$(date +%s)
 
 python -m util.merge_test_results $start_analysis $end_analysis ./build/**/results.xml
+
+# Type-check the testbenches, as Pylance does. This has to come after the tests,
+# which write the DUT type stubs in typings/.
+pyright
 
 # Analyze and synthesize every entity on its own, including ones the toplevel
 # doesn't use yet. Check every core before failing, so all problems are listed.

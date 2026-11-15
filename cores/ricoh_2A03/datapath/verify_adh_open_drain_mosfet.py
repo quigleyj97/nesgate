@@ -1,9 +1,14 @@
+from typing import TYPE_CHECKING
+
 import cocotb
 from cocotb.triggers import Timer
 from cocotb.types import LogicArray
 
+if TYPE_CHECKING:
+    from adh_open_drain_mosfet import AdhOpenDrainMosfet as DUT
+
 @cocotb.test()
-async def test_adh_open_drain_mosfet(dut):
+async def test_adh_open_drain_mosfet(dut: "DUT"):
     """Test the ADH open drain MOSFET functionality"""
     
     # Initialize signals
