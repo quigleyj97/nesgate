@@ -10,6 +10,7 @@ async def test_program_counter_low_reset(dut):
     
     clock = Clock(dut.phi2, 10, unit="ns")
     cocotb.start_soon(clock.start())
+    cocotb.start_soon(Clock(dut.metaclock, 1, unit="ns").start())
     
     # Default state - all control signals inactive
     dut.signal_PCL_DB.value = 0
@@ -36,6 +37,7 @@ async def test_program_counter_increment(dut):
     
     clock = Clock(dut.phi2, 10, unit="ns")
     cocotb.start_soon(clock.start())
+    cocotb.start_soon(Clock(dut.metaclock, 1, unit="ns").start())
     
     # Initialize all control signals
     dut.signal_PCL_DB.value = 0
@@ -80,6 +82,7 @@ async def test_program_counter_load_from_adl(dut):
     
     clock = Clock(dut.phi2, 10, unit="ns")
     cocotb.start_soon(clock.start())
+    cocotb.start_soon(Clock(dut.metaclock, 1, unit="ns").start())
     
     # Initialize all control signals
     dut.signal_PCL_DB.value = 0
@@ -111,6 +114,7 @@ async def test_program_counter_output_to_buses(dut):
     
     clock = Clock(dut.phi2, 10, unit="ns")
     cocotb.start_soon(clock.start())
+    cocotb.start_soon(Clock(dut.metaclock, 1, unit="ns").start())
     
     # Initialize all control signals
     dut.signal_PCL_DB.value = 0
@@ -148,6 +152,7 @@ async def test_carry_out(dut):
     
     clock = Clock(dut.phi2, 10, unit="ns")
     cocotb.start_soon(clock.start())
+    cocotb.start_soon(Clock(dut.metaclock, 1, unit="ns").start())
     
     # Initialize all control signals
     dut.signal_PCL_DB.value = 0

@@ -60,6 +60,9 @@ begin
     -- Bit 4 is straight up not wired to the DB bus at all, and 5 is hardwired as 1
     db_bus(7 downto 6) <= register_data(7 downto 6) when enable_P_DB = '1' else (others => 'Z');
     db_bus(5) <= '1' when enable_P_DB = '1' else 'Z';
+    -- Bit 4 still needs an explicit 'Z' driver, or it defaults to 'U' and
+    -- clobbers whatever else is driving DB(4)
+    db_bus(4) <= 'Z';
     db_bus(3 downto 0) <= register_data(3 downto 0) when enable_P_DB = '1' else (others => 'Z');
 
     process(signal_DB0_C, signal_IR5_C, signal_ACR_C, db_bus(0), signal_ACR, signal_IR5)

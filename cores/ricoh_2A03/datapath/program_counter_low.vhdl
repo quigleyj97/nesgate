@@ -26,7 +26,10 @@ entity program_counter_low is
         --! @ref Bus_ADL Address low bus
         bus_ADL         : inout std_ulogic_vector(7 downto 0);
         --! @ref Bus_DB Data bus
-        bus_DB          : inout std_ulogic_vector(7 downto 0)
+        bus_DB          : inout std_ulogic_vector(7 downto 0);
+        --! Clock to drive the select register's latch circuitry
+        --! @ref metaclock
+        metaclock       : in  std_ulogic
     );
 end entity program_counter_low;
 
@@ -43,13 +46,17 @@ begin
     -- Output to ADL bus when PCL_ADL is asserted
     bus_ADL <= program_counter_register when signal_PCL_ADL = '1' else (others => 'Z');
     
-    -- Process to handle program counter selection
-    process(signal_PCL_PCL, signal_ADL_PCL, program_counter_register, bus_ADL)
+    -- Process to handle program counter selection. The select register holds
+    -- its value while neither PCL/PCL nor ADL/PCL is asserted, so it's sampled
+    -- on the metaclock rather than inferring a latch.
+    process(metaclock)
     begin
-        if signal_PCL_PCL = '1' then
-            program_counter_select_register <= program_counter_register;
-        elsif signal_ADL_PCL = '1' then
-            program_counter_select_register <= bus_ADL;
+        if rising_edge(metaclock) then
+            if signal_PCL_PCL = '1' then
+                program_counter_select_register <= program_counter_register;
+            elsif signal_ADL_PCL = '1' then
+                program_counter_select_register <= bus_ADL;
+            end if;
         end if;
     end process;
     

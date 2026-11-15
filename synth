@@ -79,7 +79,11 @@ IDCODE=0x41113043
 # Analyze toplevel
 pushd $BUILD_DIR
     eval "$GHDL -i ../targets/ulx3s_85k.vhdl"
-    eval "$GHDL -m toplevel"
+    # Bind only (-b), without linking a simulation executable. Several cores
+    # have a core.vhdl, and with GHDL's LLVM/GCC backends they all compile to
+    # the same core.o, so linking would pick up the wrong one. Synthesis only
+    # needs the analyzed library.
+    eval "$GHDL -m -b toplevel"
 
     # Synthesize. GHDL emits a Verilog netlist for yosys to read, rather than
     # going through the ghdl-yosys-plugin, which has crashed on this design

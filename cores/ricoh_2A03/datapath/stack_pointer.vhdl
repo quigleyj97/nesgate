@@ -13,19 +13,22 @@ entity stack_pointer is
         --! @ref Ricoh_2A03_SB
         bus_SB: inout std_logic_vector(7 downto 0);
         --! @ref Ricoh_2A03_ADL
-        bus_ADL: out std_logic_vector(7 downto 0)
+        bus_ADL: out std_logic_vector(7 downto 0);
+        --! Clock to drive the latch circuitry
+        --! @ref metaclock
+        metaclock: in std_ulogic
     );
 end entity stack_pointer;
 
 architecture rtl of stack_pointer is
-    signal register_value: std_logic_vector(7 downto 0);
+    signal register_value: std_logic_vector(7 downto 0) := (others => '0');
 begin
-    process(signal_SB_S, bus_SB)
+    process(metaclock)
     begin
-        if signal_SB_S = '1' then
-            register_value <= bus_SB;
-        else
-            register_value <= register_value;
+        if rising_edge(metaclock) then
+            if signal_SB_S = '1' then
+                register_value <= bus_SB;
+            end if;
         end if;
     end process;
     bus_SB <= register_value when signal_S_SB = '1' else (others => 'Z');

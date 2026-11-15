@@ -1,10 +1,13 @@
 import cocotb
-from cocotb.triggers import Timer
+from cocotb.clock import Clock
+from cocotb.triggers import ClockCycles, Timer
 from cocotb.handle import SimHandleBase
 
 @cocotb.test()
 async def test_stack_pointer(dut: SimHandleBase):
     """Test the stack pointer behavior"""
+
+    cocotb.start_soon(Clock(dut.metaclock, 1, unit="ns").start())
 
     # Initialize inputs
     dut.signal_S_SB.value = 0
@@ -17,7 +20,7 @@ async def test_stack_pointer(dut: SimHandleBase):
     # Test loading a value into the stack pointer from bus_SB
     dut.bus_SB.value = 0b10101010
     dut.signal_SB_S.value = 1  # Enable loading from bus_SB
-    await Timer(1, unit="ns")
+    await ClockCycles(dut.metaclock, 2)
     dut.signal_SB_S.value = 0  # Disable loading
     await Timer(1, unit="ns")
     assert dut.register_value.value == 0b10101010, "Stack pointer did not load the correct value from bus_SB"
@@ -42,5 +45,5 @@ async def test_stack_pointer(dut: SimHandleBase):
     dut.signal_S_SB.value = 0
     dut.signal_S_ADL.value = 0
     dut.bus_SB.value = 0b11111111  # Change bus_SB to ensure no unintended loading
-    await Timer(1, unit="ns")
+    await ClockCycles(dut.metaclock, 2)
     assert dut.register_value.value == 0b10101010, "Stack pointer value changed unexpectedly"
