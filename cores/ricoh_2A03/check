@@ -23,6 +23,8 @@ ENTITIES=(
     pass_mosfet
     program_counter_low
     mos_6502_datapath
+    predecode_register
+    predecode_logic
     mos_6502
 )
 

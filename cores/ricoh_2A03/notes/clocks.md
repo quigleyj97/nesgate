@@ -7,6 +7,9 @@ parts, like the ALU, for both user code and CPU operation.
 
 ## Phi1 {#Ricoh_2A03_Phi1}
 
+Some internal registers are latched in on phi1, like the instruction register,
+the data output register, and the address bus registers.
+
 ## Phi2 {#Ricoh_2A03_Phi2}
 
 Most control signals are latched on in Phi2, as are most external memory modules

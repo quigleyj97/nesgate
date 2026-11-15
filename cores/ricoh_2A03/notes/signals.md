@@ -135,3 +135,28 @@ implementation?
 
 When asserted, the CPU wants to execute a bus read on the next Phi2. Conversely,
 when not asserted, the CPU wants to execute a write on the next Phi2.
+
+## Predecode signals
+
+These signals come from or go to the predecode logic, and aren't part of the
+`control_signals` produced by the decoder ROM. See
+@ref Ricoh2A03_Instruction_Decoder.
+
+### `0/IR` Inject BRK into the instruction register {#Ricoh_2A03_Signal_0_IR}
+
+Forces the predecoded opcode to `0x00` (BRK). Interrupts use this to start the
+BRK sequence, since every interrupt mimics BRK with slight changes. It is
+driven by the interrupt and dispatch logic.
+
+### `TWOCYCLE` Two-cycle instruction {#Ricoh_2A03_Signal_TWOCYCLE}
+
+Set when the predecoded opcode always completes in 2 cycles: an immediate
+operand instruction, or a single-byte instruction other than a stack push or
+pull. Used by the short cycle counter in the timing logic. The real chip
+outputs this active-low, as `/TWOCYCLE`.
+
+### `IMPLIED` Single-byte instruction {#Ricoh_2A03_Signal_IMPLIED}
+
+Set when the predecoded opcode matches `XXXX10X0`, a single-byte instruction
+with no operand. Used by the program counter increment logic. The real chip
+outputs this active-low, as `/IMPLIED`.

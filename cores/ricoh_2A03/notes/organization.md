@@ -8,9 +8,9 @@
     - [x] @ref a_input_register
     - [x] @ref b_input_register
     - [ ] (todo) BCD Corrector
-- Ricoh2A03_Instruction_Decoder
-    - [ ] Predecode register
-    - [ ] Predecode logic
+- [~] @subpage Ricoh2A03_Instruction_Decoder
+    - [x] @ref predecode_register
+    - [x] @ref predecode_logic
     - [ ] Instruction register
     - [ ] Timing generation logic
     - [ ] Instruction decoder ROM
