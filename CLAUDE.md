@@ -16,7 +16,7 @@ pipenv install
 pipenv run ./synth          # analyze + test every core, then synthesize the bitstream
 ```
 
-`synth` wipes `build/` and then, for each `cores/*` directory, runs `./analyze $BUILD_DIR` and `./test $BASE_DIR`. It merges the cocotb `results.xml` files into `build/results.json` (CTRF format, consumed by CI) and synthesizes `targets/ulx3s_85k.vhdl`. The output is `build/toplevel.ulx3s.bit`. Any tool missing from PATH falls back to an amd64 `hdlc/*` Docker image.
+`synth` wipes `build/`, runs every core's `./analyze $BUILD_DIR`, then every core's `./test $BASE_DIR`, and merges the cocotb `results.xml` files into `build/results.json` (CTRF format, consumed by CI). It then runs every core's `./check $BUILD_DIR`, which fails the build if any entity doesn't compile or doesn't synthesize on its own (e.g. an inferred latch), even if the toplevel doesn't use it yet. Finally it synthesizes `targets/ulx3s_85k.vhdl`; Yosys flattens the design and runs `tribuf -logic` so the shared `'Z'` buses become muxes, and treats `conflicting drivers` warnings as errors. The output is `build/toplevel.ulx3s.bit`. Any tool missing from PATH falls back to an amd64 `hdlc/*` Docker image.
 
 Run a single testbench from the repo root (GHDL must be on PATH):
 
@@ -35,6 +35,7 @@ cocotb is pinned to `~=2.1`. Use the 2.x API: `cocotb_tools.runner`, `cocotb.typ
 - `cores/<name>/`: self-contained cores. Each one has:
   - `analyze`: runs `$GHDL -i` on the core's VHDL files from inside `build/`, using paths like `../cores/...`. GHDL's `work-obj*.cf` records these *input* paths, and top-level elaboration in `build/` depends on them, so keep that path style.
   - `test`: one `python -m util.run_cocotb ...` line per testbench, run from the repo root (`$1`).
+  - `check`: an `ENTITIES` list of every entity in the core, passed to `util/synth_check`, which runs `ghdl -m -b` and `ghdl --synth` on each one.
   - `__init__.py` plus `verify_<entity>.py` cocotb testbenches, one per entity.
 - `cores/ricoh_2A03/` is split into `alu/` and `datapath/`, each with its own `core.vhdl` wiring the subunits together. The CPU entity is `mos_6502` in `cores/ricoh_2A03/core.vhdl`. `notes/` holds design notes: clocks, the bus/datapath layout, and the list of decoder control signals and their indices in `control_signals`.
 - `targets/ulx3s_85k.vhdl` is the synthesis top level (`toplevel`). It declares components inline and binds them with `for ... use entity work.<entity>`. `targets/ulx3s.lpf` holds the pin constraints.
@@ -44,7 +45,8 @@ cocotb is pinned to `~=2.1`. Use the 2.x API: `cocotb_tools.runner`, `cocotb.typ
 
 1. Add the VHDL file to that core's `analyze` `FILES` list.
 2. Add a `verify_<entity>.py` testbench and a matching line in the core's `test` script.
-3. Update the Doxygen docs: the subunit's `index.md` and the checklist in `cores/ricoh_2A03/notes/organization.md`.
+3. Add the entity to the core's `check` `ENTITIES` list.
+4. Update the Doxygen docs: the subunit's `index.md` and the checklist in `cores/ricoh_2A03/notes/organization.md`.
 
 ## Design conventions
 

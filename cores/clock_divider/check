@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Check that every entity in this core analyzes and synthesizes on its own.
+# Run by `synth` after every core has been imported. $1 is the build directory.
+
+set -e
+
+ENTITIES=(
+    clock_divider
+)
+
+"$(dirname "$0")/../../util/synth_check" "$1" "${ENTITIES[@]}"

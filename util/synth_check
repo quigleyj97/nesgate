@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Fully analyze and synthesize each given entity on its own, so that compile
+# errors and inferred latches are caught even in units the toplevel doesn't
+# instantiate yet. `ghdl -i` (used by each core's `analyze`) only parses files,
+# so on its own it lets these through.
+#
+# Every core must have been imported into the build library first, since an
+# entity may depend on units from other cores.
+#
+# Usage: synth_check <build dir> <entity>...
+
+set -x
+
+BUILD_DIR=$1
+shift
+
+failed=()
+
+pushd "$BUILD_DIR" > /dev/null
+for entity in "$@"; do
+    # -m -b analyzes the entity and its dependencies in order, then binds
+    # without linking an executable (which would collide with the
+    # build/<entity>/ directories made by cocotb).
+    if ! eval "$GHDL -m -b $entity"; then
+        failed+=("$entity (analysis)")
+        continue
+    fi
+    if ! eval "$GHDL --synth $entity" > /dev/null; then
+        failed+=("$entity (synthesis)")
+    fi
+done
+popd > /dev/null
+
+if [ ${#failed[@]} -ne 0 ]; then
+    set +x
+    echo "synth_check failed for:" >&2
+    printf '  %s\n' "${failed[@]}" >&2
+    exit 1
+fi

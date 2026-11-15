@@ -6,5 +6,5 @@ set -e
 FILES="../cores/phased_clock_generator/core.vhdl"
 
 pushd $1
-eval "ghdl -i $FILES"
+eval "$GHDL -i $FILES"
 popd

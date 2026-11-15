@@ -34,13 +34,24 @@ ECPPACK=$(find_tool ecppack $TRELLIS_CONTAINER_NAME)
 
 start_analysis=$(date +%s)
 
+CORES=()
 for core in cores/*; do
     # Skip the index.md file as that's not actually a core
-    if [ $core = "cores/index.md" ]; then
-        continue
+    if [ -d $core ]; then
+        CORES+=($core)
     fi
+done
+
+# Import every core first, since cores can depend on one another (e.g. blinky
+# uses clock_divider)
+for core in "${CORES[@]}"; do
     pushd $core
     ./analyze $BUILD_DIR
+    popd
+done
+
+for core in "${CORES[@]}"; do
+    pushd $core
     ./test $BASE_DIR
     popd
 done
@@ -48,6 +59,19 @@ done
 end_analysis=$(date +%s)
 
 python -m util.merge_test_results $start_analysis $end_analysis ./build/**/results.xml
+
+# Analyze and synthesize every entity on its own, including ones the toplevel
+# doesn't use yet. Check every core before failing, so all problems are listed.
+failed_cores=()
+for core in "${CORES[@]}"; do
+    if ! $core/check $BUILD_DIR; then
+        failed_cores+=($core)
+    fi
+done
+if [ ${#failed_cores[@]} -ne 0 ]; then
+    echo "Entity checks failed in: ${failed_cores[*]}" >&2
+    exit 1
+fi
 
 # TODO: Move this into a separate, target-specific script
 IDCODE=0x41113043
@@ -61,7 +85,13 @@ pushd $BUILD_DIR
     # going through the ghdl-yosys-plugin, which has crashed on this design
     # (ASSERTION_ERROR in netlists.adb) in some OSS CAD Suite builds.
     eval "$GHDL --synth --out=verilog toplevel" > ./toplevel.v
-    eval "$YOSYS -p 'read_verilog ./toplevel.v; debug synth_ecp5 -top toplevel -json ./toplevel.ulx3s.json'"
+
+    # The ECP5 fabric has no internal tri-state buffers, so the CPU's shared
+    # 'Z'-driven buses only synthesize once the design is flattened and
+    # `tribuf -logic` turns them into muxes. Without that, yosys just warns
+    # about "multiple conflicting drivers" and produces a broken netlist, so
+    # make that warning an error.
+    eval "$YOSYS -e 'conflicting drivers' -p 'read_verilog ./toplevel.v; hierarchy -top toplevel; proc; flatten; tribuf -logic; debug synth_ecp5 -top toplevel -json ./toplevel.ulx3s.json'"
     eval "$NEXTPNR --json ./toplevel.ulx3s.json --textcfg ./toplevel.ulx3s.config --lpf ../targets/ulx3s.lpf --85k --package CABGA381"
     eval "$ECPPACK ./toplevel.ulx3s.config ./toplevel.ulx3s.bit --idcode $IDCODE"
 popd

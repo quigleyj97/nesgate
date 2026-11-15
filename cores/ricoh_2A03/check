@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# Check that every entity in this core analyzes and synthesizes on its own.
+# Run by `synth` after every core has been imported. $1 is the build directory.
+
+set -e
+
+ENTITIES=(
+    mos_6502_alu
+    adder_hold_register
+    a_input_register
+    b_input_register
+    logic_core
+    index_register
+    accumulator
+    data_input_latch
+    data_output_latch
+    status_register
+    stack_pointer
+    precharge_mosfets
+    adh_open_drain_mosfet
+    adl_open_drain_mosfet
+    pass_mosfet
+    program_counter_low
+    mos_6502_datapath
+    mos_6502
+)
+
+"$(dirname "$0")/../../util/synth_check" "$1" "${ENTITIES[@]}"
