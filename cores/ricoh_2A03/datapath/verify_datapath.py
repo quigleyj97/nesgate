@@ -8,6 +8,7 @@ when it isn't enabled, and the bus resolves to whichever one is driving.
 """
 
 import cocotb
+from cocotb.clock import Clock
 from cocotb.handle import Force, Release
 from cocotb.triggers import Timer
 
@@ -26,6 +27,15 @@ CONTROL_SIGNALS = [
     "output_enable_Y_SB",
     "load_ADH_ABH",
     "load_ADL_ABL",
+    "load_PCL_PCL",
+    "load_ADL_PCL",
+    "signal_I_PC",
+    "output_enable_PCL_DB",
+    "output_enable_PCL_ADL",
+    "load_PCH_PCH",
+    "load_ADH_PCH",
+    "output_enable_PCH_DB",
+    "output_enable_PCH_ADH",
     "output_enable_DL_DB",
     "output_enable_DL_ADL",
     "output_enable_DL_ADH",
@@ -53,7 +63,8 @@ BUSES = ["databus_SB", "databus_DB", "databus_ADH", "databus_ADL"]
 
 
 async def reset(dut: "DUT"):
-    """Deassert every control signal, and stop driving the buses."""
+    """Start the metaclock, deassert every control signal, and stop driving the buses."""
+    cocotb.start_soon(Clock(dut.metaclock, 1, unit="ns").start())
     for name in CONTROL_SIGNALS:
         getattr(dut, name).value = 0
     # Read mode, so the data output latch doesn't drive the data pins
@@ -68,6 +79,62 @@ async def pulse(signal):
     await Timer(1, unit="ns")
     signal.value = 0
     await Timer(1, unit="ns")
+
+
+async def phase(clock):
+    """Run one clock phase, long enough for several metaclock edges."""
+    clock.value = 1
+    await Timer(4, unit="ns")
+    clock.value = 0
+    await Timer(1, unit="ns")
+
+
+async def read_pc(dut: "DUT") -> tuple[int, int]:
+    """Read the program counter from ADH/ADL, and again from DB a byte at a time."""
+    dut.output_enable_PCL_ADL.value = 1
+    dut.output_enable_PCH_ADH.value = 1
+    await Timer(1, unit="ns")
+    from_address_buses = (int(dut.databus_ADH.value) << 8) | int(dut.databus_ADL.value)
+    dut.output_enable_PCL_ADL.value = 0
+    dut.output_enable_PCH_ADH.value = 0
+
+    dut.output_enable_PCL_DB.value = 1
+    await Timer(1, unit="ns")
+    low = int(dut.databus_DB.value)
+    dut.output_enable_PCL_DB.value = 0
+    dut.output_enable_PCH_DB.value = 1
+    await Timer(1, unit="ns")
+    high = int(dut.databus_DB.value)
+    dut.output_enable_PCH_DB.value = 0
+    await Timer(1, unit="ns")
+    return from_address_buses, (high << 8) | low
+
+
+async def load_pc(dut: "DUT", value: int):
+    """Load the program counter from ADH/ADL during phi1, and latch it on phi2."""
+    dut.databus_ADH.value = Force(value >> 8)
+    dut.databus_ADL.value = Force(value & 0xFF)
+    dut.load_ADH_PCH.value = 1
+    dut.load_ADL_PCL.value = 1
+    await Timer(1, unit="ns")
+    await phase(dut.phi1)
+    dut.load_ADH_PCH.value = 0
+    dut.load_ADL_PCL.value = 0
+    dut.databus_ADH.value = Release()
+    dut.databus_ADL.value = Release()
+    await phase(dut.phi2)
+
+
+async def increment_pc(dut: "DUT"):
+    """Refresh the PC select registers during phi1, and increment on phi2."""
+    dut.load_PCH_PCH.value = 1
+    dut.load_PCL_PCL.value = 1
+    dut.signal_I_PC.value = 1
+    await phase(dut.phi1)
+    dut.load_PCH_PCH.value = 0
+    dut.load_PCL_PCL.value = 0
+    await phase(dut.phi2)
+    dut.signal_I_PC.value = 0
 
 
 async def load_from_sb(dut: "DUT", load, value: int):
@@ -160,3 +227,44 @@ async def test_data_input_latch(dut: "DUT"):
     await Timer(1, unit="ns")
     assert dut.databus_ADL.value == 0x77
     assert not dut.databus_DB.value.is_resolvable, "DB should be open again"
+
+
+@cocotb.test()
+async def test_program_counter(dut: "DUT"):
+    """PCL and PCH load from ADL and ADH, increment as one 16-bit counter, and
+    drive ADL/ADH and DB."""
+    await reset(dut)
+    await load_pc(dut, 0x12FE)
+    assert await read_pc(dut) == (0x12FE, 0x12FE)
+
+    await increment_pc(dut)
+    assert await read_pc(dut) == (0x12FF, 0x12FF)
+
+    # PCLC carries from PCL into PCH
+    await increment_pc(dut)
+    assert await read_pc(dut) == (0x1300, 0x1300)
+
+    # The program counter wraps from 0xFFFF to 0x0000
+    await load_pc(dut, 0xFFFF)
+    await increment_pc(dut)
+    assert await read_pc(dut) == (0x0000, 0x0000)
+
+
+@cocotb.test()
+async def test_program_counter_loads_only_on_phi1(dut: "DUT"):
+    """ADL/PCL and ADH/PCH only load the select registers during phi1."""
+    await reset(dut)
+    await load_pc(dut, 0x1234)
+
+    dut.databus_ADH.value = Force(0x66)
+    dut.databus_ADL.value = Force(0x55)
+    dut.load_ADH_PCH.value = 1
+    dut.load_ADL_PCL.value = 1
+    await phase(dut.phi2)
+    dut.load_ADH_PCH.value = 0
+    dut.load_ADL_PCL.value = 0
+    dut.databus_ADH.value = Release()
+    dut.databus_ADL.value = Release()
+    await Timer(1, unit="ns")
+
+    assert await read_pc(dut) == (0x1234, 0x1234), "PC should not load from ADH/ADL during phi2"

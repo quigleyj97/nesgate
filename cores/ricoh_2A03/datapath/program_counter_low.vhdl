@@ -9,23 +9,23 @@ use ieee.numeric_std.all;
 --! Program Counter Low register entity
 entity program_counter_low is
     port (
-        --! @ref Clock_PHI2 System clock signal
+        --! @ref Ricoh_2A03_Phi2
         phi2            : in  std_ulogic;
-        --! @ref Signal_PCL_DB Program counter low value to data bus
+        --! @ref Ricoh_2A03_Signal_PCL_DB
         signal_PCL_DB   : in  std_ulogic;
-        --! @ref Signal_PCL_ADL Program counter low value to address low bus
+        --! @ref Ricoh_2A03_Signal_PCL_ADL
         signal_PCL_ADL  : in  std_ulogic;
-        --! @ref Signal_1_PC Increment program counter
+        --! @ref Ricoh_2A03_Signal_I_PC
         signal_1_PC     : in  std_ulogic;
-        --! @ref Signal_PCL_PCL Store program counter low value
+        --! @ref Ricoh_2A03_Signal_PCL_PCL
         signal_PCL_PCL  : in  std_ulogic;
-        --! @ref Signal_ADL_PCL Load PCL from address low bus
+        --! @ref Ricoh_2A03_Signal_ADL_PCL
         signal_ADL_PCL  : in  std_ulogic;
-        --! @ref Signal_PCLC Program counter low carry output
+        --! @ref Ricoh_2A03_PCLC, to @ref program_counter_high
         signal_PCLC     : out std_ulogic;
-        --! @ref Bus_ADL Address low bus
+        --! @ref Ricoh_2A03_ADL
         bus_ADL         : inout std_ulogic_vector(7 downto 0);
-        --! @ref Bus_DB Data bus
+        --! @ref Ricoh_2A03_DB
         bus_DB          : inout std_ulogic_vector(7 downto 0);
         --! Clock to drive the select register's latch circuitry
         --! @ref metaclock

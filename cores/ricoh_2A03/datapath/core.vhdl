@@ -1,13 +1,13 @@
 --! @file core.vhdl
 --! @brief Wrapper component holding the data input/output latches, the
---! accumulator and index registers, the address registers, and the status
---! register.
+--! accumulator and index registers, the address registers, the program
+--! counter, and the status register.
 --! @details The internal buses (SB, DB, ADH, ADL) are driven by several
 --! subunits at once, each releasing the bus to 'Z' when it isn't enabled.
 --! An unresolved std_ulogic_vector can only have one driver, so the bus ports
 --! here are resolved std_logic_vectors, and each subunit's std_ulogic_vector
 --! ports are converted at the port map.
---! @todo Add the stack pointer, program counter, and precharge and drain MOSFETs
+--! @todo Add the stack pointer, and precharge and drain MOSFETs
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -22,6 +22,8 @@ entity mos_6502_datapath is
         phi1: in std_ulogic;
         --! @ref Ricoh_2A03_Phi2
         phi2: in std_ulogic;
+        --! @ref metaclock
+        metaclock: in std_ulogic;
 
         -- #region Buses
         --! @ref Ricoh_2A03_SB
@@ -59,6 +61,26 @@ entity mos_6502_datapath is
         load_ADH_ABH: in std_ulogic;
         --! @ref Ricoh_2A03_Signal_ADL_ABL
         load_ADL_ABL: in std_ulogic;
+
+        -- Program counter
+        --! @ref Ricoh_2A03_Signal_PCL_PCL
+        load_PCL_PCL: in std_ulogic;
+        --! @ref Ricoh_2A03_Signal_ADL_PCL
+        load_ADL_PCL: in std_ulogic;
+        --! @ref Ricoh_2A03_Signal_I_PC
+        signal_I_PC: in std_ulogic;
+        --! @ref Ricoh_2A03_Signal_PCL_DB
+        output_enable_PCL_DB: in std_ulogic;
+        --! @ref Ricoh_2A03_Signal_PCL_ADL
+        output_enable_PCL_ADL: in std_ulogic;
+        --! @ref Ricoh_2A03_Signal_PCH_PCH
+        load_PCH_PCH: in std_ulogic;
+        --! @ref Ricoh_2A03_Signal_ADH_PCH
+        load_ADH_PCH: in std_ulogic;
+        --! @ref Ricoh_2A03_Signal_PCH_DB
+        output_enable_PCH_DB: in std_ulogic;
+        --! @ref Ricoh_2A03_Signal_PCH_ADH
+        output_enable_PCH_ADH: in std_ulogic;
 
         -- Data latches
         --! @ref Ricoh_2A03_Signal_DL_DB
@@ -171,6 +193,33 @@ architecture rtl of mos_6502_datapath is
             signal_DB7_N: in std_ulogic
         );
     end component;
+    component program_counter_low is
+        port(
+            phi2: in std_ulogic;
+            signal_PCL_DB: in std_ulogic;
+            signal_PCL_ADL: in std_ulogic;
+            signal_1_PC: in std_ulogic;
+            signal_PCL_PCL: in std_ulogic;
+            signal_ADL_PCL: in std_ulogic;
+            signal_PCLC: out std_ulogic;
+            bus_ADL: inout std_ulogic_vector(7 downto 0);
+            bus_DB: inout std_ulogic_vector(7 downto 0);
+            metaclock: in std_ulogic
+        );
+    end component;
+    component program_counter_high is
+        port(
+            phi2: in std_ulogic;
+            signal_PCH_DB: in std_ulogic;
+            signal_PCH_ADH: in std_ulogic;
+            signal_PCLC: in std_ulogic;
+            signal_PCH_PCH: in std_ulogic;
+            signal_ADH_PCH: in std_ulogic;
+            bus_ADH: inout std_ulogic_vector(7 downto 0);
+            bus_DB: inout std_ulogic_vector(7 downto 0);
+            metaclock: in std_ulogic
+        );
+    end component;
     -- #endregion
 
     for ACC: accumulator use entity work.accumulator;
@@ -178,10 +227,22 @@ architecture rtl of mos_6502_datapath is
     for P_REG: status_register use entity work.status_register;
     for DL: data_input_latch use entity work.data_input_latch;
     for DOR: data_output_latch use entity work.data_output_latch;
+    for PCL: program_counter_low use entity work.program_counter_low;
+    for PCH: program_counter_high use entity work.program_counter_high;
 
     --! The address bus registers load from ADH/ADL during phi1
     signal load_ABH: std_ulogic;
     signal load_ABL: std_ulogic;
+
+    --! The program counter select registers only load during phi1; during
+    --! phi2 the increment logic's result is latched into PCL and PCH, and the
+    --! ADL and ADH buses are precharged.
+    signal load_PCLS_from_PCL: std_ulogic;
+    signal load_PCLS_from_ADL: std_ulogic;
+    signal load_PCHS_from_PCH: std_ulogic;
+    signal load_PCHS_from_ADH: std_ulogic;
+    --! @ref Ricoh_2A03_PCLC
+    signal signal_PCLC: std_ulogic;
 begin
     ACC: accumulator
         port map(
@@ -260,5 +321,35 @@ begin
             signal_R_NOT_W => signal_R_NOT_W,
             data_in => std_ulogic_vector(databus_DB),
             data_out => data
+        );
+
+    load_PCLS_from_PCL <= load_PCL_PCL and phi1;
+    load_PCLS_from_ADL <= load_ADL_PCL and phi1;
+    PCL: program_counter_low
+        port map(
+            phi2 => phi2,
+            signal_PCL_DB => output_enable_PCL_DB,
+            signal_PCL_ADL => output_enable_PCL_ADL,
+            signal_1_PC => signal_I_PC,
+            signal_PCL_PCL => load_PCLS_from_PCL,
+            signal_ADL_PCL => load_PCLS_from_ADL,
+            signal_PCLC => signal_PCLC,
+            std_logic_vector(bus_ADL) => std_ulogic_vector(databus_ADL),
+            std_logic_vector(bus_DB) => std_ulogic_vector(databus_DB),
+            metaclock => metaclock
+        );
+    load_PCHS_from_PCH <= load_PCH_PCH and phi1;
+    load_PCHS_from_ADH <= load_ADH_PCH and phi1;
+    PCH: program_counter_high
+        port map(
+            phi2 => phi2,
+            signal_PCH_DB => output_enable_PCH_DB,
+            signal_PCH_ADH => output_enable_PCH_ADH,
+            signal_PCLC => signal_PCLC,
+            signal_PCH_PCH => load_PCHS_from_PCH,
+            signal_ADH_PCH => load_PCHS_from_ADH,
+            std_logic_vector(bus_ADH) => std_ulogic_vector(databus_ADH),
+            std_logic_vector(bus_DB) => std_ulogic_vector(databus_DB),
+            metaclock => metaclock
         );
 end architecture;

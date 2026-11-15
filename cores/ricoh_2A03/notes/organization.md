@@ -16,10 +16,9 @@
     - [ ] Instruction decoder ROM
     - [ ] Interrupt controller
     - [ ] Ready controller
-- Ricoh2A03_Program_Counter
-    - [ ] Program Counter Select registers
-    - [ ] Program Counter registers
-    - [ ] Program Counter increment logic
+- [x] @ref MOS_6502_PC_Registers
+    - [x] @ref program_counter_low - PCLS, PCL and increment logic
+    - [x] @ref program_counter_high - PCHS, PCH and increment logic
 - [~] @subpage MOS_6502_Datapath
     - [x] @ref index_register - X and Y index registers
     - [x] @ref accumulator

@@ -37,7 +37,7 @@ cocotb is pinned to `~=2.1`. Use the 2.x API: `cocotb_tools.runner`, `cocotb.typ
   - `test`: one `python -m util.run_cocotb ...` line per testbench, run from the repo root (`$1`).
   - `check`: an `ENTITIES` list of every entity in the core, passed to `util/synth_check`, which runs `ghdl -m -b` and `ghdl --synth` on each one.
   - `__init__.py` plus `verify_<entity>.py` cocotb testbenches, one per entity.
-- `cores/ricoh_2A03/` is split into `alu/` and `datapath/`, each with its own `core.vhdl` wiring the subunits together. The CPU entity is `mos_6502` in `cores/ricoh_2A03/core.vhdl`. `notes/` holds design notes: clocks, the bus/datapath layout, and the list of decoder control signals and their indices in `control_signals`.
+- `cores/ricoh_2A03/` is split into `alu/` and `datapath/`, each with its own `core.vhdl` wiring the subunits together. The CPU entity is `mos_6502` in `cores/ricoh_2A03/core.vhdl`. `notes/` holds design notes: clocks, the bus/datapath layout, and the decoder control signals, grouped by the part of the CPU they control.
 - `targets/ulx3s_85k.vhdl` is the synthesis top level (`toplevel`). It declares components inline and binds them with `for ... use entity work.<entity>`. `targets/ulx3s.lpf` holds the pin constraints.
 - `util/run_cocotb.py` wraps the cocotb runner. `util/merge_test_results.py` produces the CTRF report.
 

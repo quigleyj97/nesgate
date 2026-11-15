@@ -8,6 +8,8 @@ the input data latch, and the pass and precharge MOSFETs between each bus.
 - @ref index_register
 - @ref accumulator
 - @ref data_input_latch
+- @ref program_counter_low
+- @ref program_counter_high
 
 ## Wiring
 
@@ -19,5 +21,6 @@ ports are converted at the port map, e.g.
 `std_logic_vector(data_out) => databus_SB`.
 
 So far it holds the accumulator, the X and Y index registers, the status
-register, the address bus registers and the data input/output latches. The
-stack pointer, program counter and MOSFETs aren't wired in yet.
+register, the address bus registers, the data input/output latches, and the
+program counter (see @ref MOS_6502_PC_Registers). The stack pointer and MOSFETs
+aren't wired in yet.

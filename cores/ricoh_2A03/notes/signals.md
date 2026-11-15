@@ -3,10 +3,8 @@
 
 The circuitry of the 6502 is controlled by 62 signals from the instruction
 decoder, which enables and disables various parts of the CPU at different phases
-of execution. They are presented here in linear order as depicted by Dr.
-Hansen's block diagram, and the index of each signal in this list corresponds to
-the index of that signal in the `control_signals` inputs that are commonly used
-by the project
+of execution. They are grouped here by the part of the CPU they control, along
+with a few signals that don't come from the decoder.
 
 ## Data latch control signals
 
@@ -20,20 +18,66 @@ by the project
 ### `0/ADH(1-7)` {#Ricoh_2A03_Signal_0_ADH_1_7}
 ### `ADH/ABH` {#Ricoh_2A03_Signal_ADH_ABH}
 ### `ADL/ABL` {#Ricoh_2A03_Signal_ADL_ABL}
-### `PCL/PCL` {#Ricoh_2A03_Signal_PCL_PCL}
-### `ADL/PCL` {#Ricoh_2A03_Signal_ADL_PCL}
-### `I/PC` {#Ricoh_2A03_Signal_I_PC}
-### `PCL/DB` {#Ricoh_2A03_Signal_PCL_DB}
-### `PCL/ADL` {#Ricoh_2A03_Signal_PCL_ADL}
-### `PCH/PCH` {#Ricoh_2A03_Signal_PCH_PCH}
-### `ADH/PCH` {#Ricoh_2A03_Signal_ADH_PCH}
-### `PCH/DB` {#Ricoh_2A03_Signal_PCH_DB}
-### `PCH/ADH` {#Ricoh_2A03_Signal_PCH_ADH}
+
 ### `SB/ADH` {#Ricoh_2A03_Signal_SB_ADH}
 ### `SB/DB` {#Ricoh_2A03_Signal_SB_DB}
 ### `0/ADL0` {#Ricoh_2A03_Signal_0_ADL0}
 ### `0/ADL1` {#Ricoh_2A03_Signal_0_ADL1}
 ### `0/ADL2` {#Ricoh_2A03_Signal_0_ADL2}
+
+## Program counter signals
+
+These control @ref program_counter_low and @ref program_counter_high (see
+@ref MOS_6502_PC_Registers). The select register loads (`PCL/PCL`, `ADL/PCL`,
+`PCH/PCH`, `ADH/PCH`) are only active during phi1, and
+@ref mos_6502_datapath gates them with phi1. `I/PC` and the bus output enables
+are active in both phases.
+
+### `PCL/PCL` Refresh PCL select register from PCL {#Ricoh_2A03_Signal_PCL_PCL}
+
+Loads PCLS from PCL, so that PCL keeps its value (plus the increment, if
+`I/PC` is asserted) on the next phi2. The random control logic asserts this
+whenever it doesn't assert `ADL/PCL`.
+
+### `ADL/PCL` Load PCL select register from ADL bus {#Ricoh_2A03_Signal_ADL_PCL}
+
+Loads PCLS from the ADL bus, e.g. to jump or to load a vector.
+
+### `I/PC` Increment program counter {#Ricoh_2A03_Signal_I_PC}
+
+Increments the program counter on the next phi2. PCL increments directly, and
+PCH increments on @ref Ricoh_2A03_PCLC. The real chip uses this signal
+active-low, as `#1/PC`.
+
+### `PCL/DB` Enable PCL output to DB bus {#Ricoh_2A03_Signal_PCL_DB}
+### `PCL/ADL` Enable PCL output to ADL bus {#Ricoh_2A03_Signal_PCL_ADL}
+### `PCH/PCH` Refresh PCH select register from PCH {#Ricoh_2A03_Signal_PCH_PCH}
+
+Loads PCHS from PCH, so that PCH keeps its value (plus the carry from PCL) on
+the next phi2. The random control logic asserts this whenever it doesn't assert
+`ADH/PCH`.
+
+### `ADH/PCH` Load PCH select register from ADH bus {#Ricoh_2A03_Signal_ADH_PCH}
+
+Loads PCHS from the ADH bus, e.g. to jump or to load a vector.
+
+### `PCH/DB` Enable PCH output to DB bus {#Ricoh_2A03_Signal_PCH_DB}
+### `PCH/ADH` Enable PCH output to ADH bus {#Ricoh_2A03_Signal_PCH_ADH}
+
+The program counter's increment logic also generates two carries internally,
+which don't come from the decoder:
+
+### `PCLC` Program counter low carry {#Ricoh_2A03_PCLC}
+
+The carry out of the PCL increment logic, which increments PCH. It's set when
+`I/PC` is asserted and PCLS is `0xFF`.
+
+### `PCHC` Program counter high nibble carry {#Ricoh_2A03_PCHC}
+
+PCH's increment logic is split into two nibbles, as in Hanson's block diagram.
+PCHC is the carry from the low nibble into the high nibble, set when PCLC is
+set and the low nibble of PCHS is `0xF`. There's no carry out of the high
+nibble, so the program counter wraps from `0xFFFF` to `0x0000`.
 
 ## Stack pointer signals
 
@@ -138,8 +182,8 @@ when not asserted, the CPU wants to execute a write on the next Phi2.
 
 ## Predecode signals
 
-These signals come from or go to the predecode logic, and aren't part of the
-`control_signals` produced by the decoder ROM. See
+These signals come from or go to the predecode logic, and aren't produced by
+the decoder ROM. See
 @ref Ricoh2A03_Instruction_Decoder.
 
 ### `0/IR` Inject BRK into the instruction register {#Ricoh_2A03_Signal_0_IR}

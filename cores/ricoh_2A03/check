@@ -22,6 +22,7 @@ ENTITIES=(
     adl_open_drain_mosfet
     pass_mosfet
     program_counter_low
+    program_counter_high
     mos_6502_datapath
     predecode_register
     predecode_logic
