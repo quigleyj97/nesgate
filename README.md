@@ -30,9 +30,9 @@ which bundles GHDL, Yosys, nextpnr-ecp5 and ecppack for Linux and macOS
 tools from source (especially for macOS) is a painful adventure through the
 Dungeon Dimensions. You might even become unbearably knurd.
 
-You'll also need Python 3.12 and pipenv. The repo includes a `mise.toml` that
-pins Python and sets a few environment variables needed on macOS, so the
-easiest route is [mise](https://mise.jdx.dev):
+You'll also need Python 3.12 and pipenv. [`mise`](https://mise.jdx.dev) is a
+useful tool to help with this, as it manages tooling for you. The `mise.toml`
+file tracks what versions of which tools this repo needs. To setup with mise:
 
 ```
 $ mise install && pip install pipenv
@@ -41,14 +41,8 @@ $ pipenv install
 $ pipenv run ./synth
 ```
 
-If you don't use mise, set `PIPENV_IGNORE_VIRTUALENVS=1` after sourcing the
-OSS CAD Suite environment (it sets `VIRTUAL_ENV` to itself). On macOS, also set
-`LDSHARED` and `LDCXXSHARED` as in `mise.toml` before `pipenv install`, or
-cocotb will fail to build.
-
 If a tool isn't found on your PATH, `synth` falls back to running it in a
-Docker container. Those images are amd64-only, so they're slow under emulation
-on Apple Silicon.
+Docker container.
 
 ### Programming
 
