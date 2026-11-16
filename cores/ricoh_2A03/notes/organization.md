@@ -8,7 +8,7 @@
     - [x] @ref a_input_register
     - [x] @ref b_input_register
     - [ ] (todo) BCD Corrector
-- [~] @subpage Ricoh2A03_Instruction_Decoder
+- [x] @subpage Ricoh2A03_Instruction_Decoder
     - [x] @ref predecode_register
     - [x] @ref predecode_logic
     - [x] @ref instruction_register
@@ -16,7 +16,7 @@
     - [x] @ref decoder_rom - the 130-line instruction decoder ROM
     - [x] @ref interrupt_controller - NMI, IRQ and reset handling, and the BRK sequence
     - [x] @ref ready_controller - ready, WR, ReadyPhi1 and PRDY
-    - [ ] Random logic and dispatch controller
+    - [x] @ref random_logic_controller - the random logic and dispatcher: every control command, instruction completion, PC increment, opcode fetch and branches
 - [x] @ref MOS_6502_PC_Registers
     - [x] @ref program_counter_low - PCLS, PCL and increment logic
     - [x] @ref program_counter_high - PCHS, PCH and increment logic

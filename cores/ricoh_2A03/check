@@ -28,6 +28,7 @@ ENTITIES=(
     decoder_rom
     ready_controller
     interrupt_controller
+    random_logic_controller
     mos_6502
 )
 

@@ -1,11 +1,10 @@
 # The 6502 Instruction Decoder {#Ricoh2A03_Instruction_Decoder}
 
-This sub-core will hold the instruction decoder: the predecode stage, the
-instruction register, timing generation, and the decoder ROM that drives the
-@ref Ricoh_2A03_Signals "control signals". So far the predecode stage, the
-instruction register, the timing generation logic, the decoder ROM, the
-ready control logic and the interrupt control logic are implemented. The random
-logic that turns the decoder lines into control signals isn't implemented yet.
+This sub-core holds the instruction decoder: the predecode stage, the
+instruction register, timing generation, the decoder ROM, the ready and
+interrupt control logic, and the random logic that turns the decoder lines into
+the @ref Ricoh_2A03_Signals "control signals". The entities aren't wired
+together into the CPU yet.
 
 ## Components
 
@@ -16,6 +15,7 @@ logic that turns the decoder lines into control signals isn't implemented yet.
 - @ref decoder_rom
 - @ref ready_controller
 - @ref interrupt_controller
+- @ref random_logic_controller
 
 ## Predecode
 
@@ -62,7 +62,7 @@ While @ref Ricoh_2A03_Signal_ready is low, the counters hold their current
 cycle, and `T7` doesn't start. `T1` just follows `TRES1`, so the dispatch logic
 stalls it.
 
-`TRES1` and `TRESX` come from the dispatch logic, which isn't implemented yet.
+`TRES1` and `TRESX` come from the @ref random_logic_controller.
 `ready` comes from the @ref ready_controller. The real chip outputs most of the
 timing signals active-low. This core keeps them all active-high.
 
@@ -102,8 +102,8 @@ It also makes two delayed copies of the ready state:
 `/ready` and `WR` latches are part of the dispatcher, and the `/PRDY` latches
 sit next to the `RDY` pad.
 
-The write sources (@ref Ricoh_2A03_Signal_STOR, @ref Ricoh_2A03_Signal_PC_DB,
-decoder lines 98 and 100) come from random logic that isn't implemented yet.
+@ref Ricoh_2A03_Signal_STOR and @ref Ricoh_2A03_Signal_PC_DB come from the
+@ref random_logic_controller, and lines 98 and 100 from the @ref decoder_rom.
 @ref Ricoh_2A03_Signal_DORES comes from the @ref interrupt_controller. The R/W pin's own latch
 isn't implemented either.
 
@@ -145,6 +145,46 @@ During T5 and T6 the controller pulls the low bits of ADL low
 
 On the real chip this logic sits in the dispatcher area, and the `/NMI`, `/IRQ`
 and `/RES` latches sit next to their pads. This core keeps every internal signal
-active-high, but the pins themselves are active-low. The I flag, the random
-logic that injects BRK, and the dispatch logic that uses `BRK6E` and
-@ref Ricoh_2A03_Signal_RESP aren't implemented yet.
+active-high, but the pins themselves are active-low. The @ref random_logic_controller injects BRK, and uses `BRK6E` and
+@ref Ricoh_2A03_Signal_RESP to reset the cycle counters. The P register doesn't
+output the I flag yet.
+
+## Random logic and dispatch
+
+The @ref random_logic_controller is the rest of the control unit. On the real
+chip it is scattered between the decoder and the datapath, which is why it's
+called random logic. This core models it as one entity, because its circuits
+share so many intermediate signals.
+
+The dispatcher sequences each instruction:
+
+- Instruction completion makes @ref Ricoh_2A03_Signal_TRES1 and
+  @ref Ricoh_2A03_Signal_TRESX for the @ref timing_generator. Short
+  instructions end at `T0`, or at T2 of a branch that isn't taken. Long ones
+  end after their memory cycle, or after `T7` for read-modify-write. Indexed
+  addressing takes an extra cycle when it crosses a page, which the ACR latch
+  remembers.
+- The PC increments (@ref Ricoh_2A03_Signal_I_PC) after each opcode or operand
+  fetch, except for single-byte opcodes (@ref Ricoh_2A03_Signal_IMPLIED) and
+  hardware interrupts (@ref Ricoh_2A03_Signal_B_OUT).
+- @ref Ricoh_2A03_Signal_FETCH loads the @ref instruction_register after `T1`.
+  @ref Ricoh_2A03_Signal_0_IR injects BRK outside the fetch, or during it if an
+  interrupt is pending. So the predecode logic only sees the real opcode
+  during the fetch, and an operand byte can't trigger
+  @ref Ricoh_2A03_Signal_TWOCYCLE.
+- The branch logic works out whether a branch is taken, and which way it goes,
+  so that a taken branch that crosses a page gets a cycle to fix up PCH.
+
+The rest makes the control commands: register, ALU, PC, bus and flags control.
+Most commands are latched during Phi2 from the current cycle's decoder lines,
+and drive the datapath during the next Phi1. The ones the real chip cuts off
+during Phi2 are cut off here too.
+
+The real chip uses many active-low signals and inverted latches. This core
+keeps them all active-high. It also differs from the Verilog model in one
+place: `ADH/ABH`, where it follows the wiki's transistor-level schematics
+instead. See the entity's documentation for details.
+
+A few commands have nowhere to go yet: the @ref status_register doesn't take
+`0/V` (CLV), or output the flags the random logic needs, and the
+@ref mos_6502_alu doesn't take `DSA`. The stack pointer doesn't need `S/S`.

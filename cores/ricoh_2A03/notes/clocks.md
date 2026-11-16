@@ -43,3 +43,9 @@ multiple clock signals (or 'pseudo' clock signals, as is the case here). To work
 around this, while still trying to faithfully model the original hardware, such
 circuitry is clocked with a higher-speed clock that allows the circuit to be
 synthesized with reasonable equivalence to the original behavior.
+
+Some latches feed other latches of the same phase through logic, as they do on
+the real chip while both are open. With the metaclock, the second latch settles
+a metaclock after the first, and the chains in the @ref interrupt_controller
+and @ref random_logic_controller are up to two latches deep. So each phase must
+last at least three metaclock cycles. The testbenches use four.

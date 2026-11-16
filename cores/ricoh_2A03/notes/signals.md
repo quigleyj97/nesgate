@@ -105,10 +105,10 @@ nibble, so the program counter wraps from `0xFFFF` to `0x0000`.
 ### `SB/S` Load value into S register from SB bus {#Ricoh_2A03_Signal_SB_S}
 ### `S/S` Refresh S register value {#Ricoh_2A03_Signal_S_S}
 
-Note - this signal is not implemented by this core. It appears to be necessary
-for the actual register, as-implemented, to keep it's value valid between many
-CPU cycles (since it might be a long time between reads/writes), but that is not
-necessary on FPGA fabric.
+Asserted whenever `SB/S` isn't. The @ref random_logic_controller makes it, but
+the @ref stack_pointer doesn't use it: the real register needs it to keep its
+value valid between many CPU cycles (since it might be a long time between
+reads/writes), but that is not necessary on FPGA fabric.
 
 ### `S/SB` Enable S register output to the SB bus {#Ricoh_2A03_Signal_S_SB}
 
@@ -132,11 +132,15 @@ Control line for carry-in
 
 ### `DAA` - ALU Decimal Mode Enable {#Ricoh2A03_ALU_DAA}
 
-This controls whether the ALU operates in normal mode or in BCD
+Applies the BCD correction after an addition: ADC while the D flag
+(@ref Ricoh_2A03_Signal_D_OUT) is set. The real chip uses it active-low, as
+`/DAA`.
 
-### `DSA` - ALU {#Ricoh2A03_DSA}
+### `DSA` - ALU Decimal Subtract Adjust {#Ricoh2A03_DSA}
 
-Unknown, related to BCD correction
+Applies the BCD correction after a subtraction: SBC while the D flag is set.
+The real chip uses it active-low, as `/DSA`. The @ref mos_6502_alu doesn't
+take it yet.
 
 ### `SUMS` - ALU Summation Enable {#Ricoh2A03_ALU_SUMS}
 ### `ANDS` - ALU Logical AND Enable {#Ricoh2A03_ALU_ANDS}
@@ -188,10 +192,36 @@ doesn't yet implement that, so the routing is direct.
 ### `AVR/V` Set V to the value of AVR {#Ricoh_Signal_AVR_V}
 ### `1/V` Set V to the value of 1/V {#Ricoh_Signal_1_V}
 
-Todo: There's a related signal 0/V that isn't always labelled... does this need
-implementation?
+Sets V on a falling edge of the external `SO` pin. It doesn't come from the
+random logic.
+
+### `0/V` Clear V {#Ricoh_Signal_0_V}
+
+Clears V, for CLV (decoder line 127). The @ref random_logic_controller makes
+it, but the @ref status_register doesn't take it yet.
 
 ### `DB7/N` Set N to the value of DB(7) {#Ricoh_Signal_DB7_N}
+
+The real chip loads Z, I and D from DB with one signal, `DB/P`, and C, V and N
+with their own (`DB/C`, `DB/V`, `DB/N`). The @ref random_logic_controller
+drives `DB1/Z`, `DB2/I` and `DB3/D` all from `DB/P`.
+
+The P register also outputs its flags to the random logic. The real chip
+outputs them active-low (`/C_OUT` and so on). This core keeps them active-high.
+
+### `C_OUT` Carry flag {#Ricoh_2A03_Signal_C_OUT}
+
+Used for the ALU carry-in (ADC, SBC, ROL), ROR, and the BCC/BCS branches.
+
+### `D_OUT` Decimal flag {#Ricoh_2A03_Signal_D_OUT}
+
+Turns on the BCD correction (@ref Ricoh2A03_ALU_DAA, @ref Ricoh2A03_DSA).
+
+### `V_OUT` Overflow flag {#Ricoh_2A03_Signal_V_OUT}
+### `N_OUT` Negative flag {#Ricoh_2A03_Signal_N_OUT}
+### `Z_OUT` Zero flag {#Ricoh_2A03_Signal_Z_OUT}
+
+Used by the BVC/BVS, BPL/BMI and BNE/BEQ branches.
 
 ## External CPU Signals
 
@@ -229,6 +259,12 @@ outputs this active-low, as `/IMPLIED`.
 
 These signals control the @ref instruction_register, and aren't produced by the
 decoder ROM. See @ref Ricoh2A03_Instruction_Decoder.
+
+### `IR5` Opcode bit 5 {#Ricoh_2A03_Signal_IR5}
+
+Bit 5 of the opcode in the @ref instruction_register. The flag instructions
+(CLC/SEC, CLI/SEI, CLD/SED) load it into their flag, and a conditional branch
+is taken when its flag equals it.
 
 ### `FETCH` Load the instruction register {#Ricoh_2A03_Signal_FETCH}
 
@@ -295,14 +331,20 @@ instruction, through @ref Ricoh_2A03_Signal_TRESX.
 ### `TRES1` Reset the short cycle counter {#Ricoh_2A03_Signal_TRES1}
 
 Starts @ref Ricoh_2A03_Signal_T1 on the next cycle, which begins the next
-instruction. The instruction completion logic in the dispatcher makes it.
+instruction. The instruction completion logic in the
+@ref random_logic_controller makes it: at `T0`, at T2 of a branch that isn't
+taken, at T3 of a taken branch that doesn't cross a page, and while `T1` is
+stalled by @ref Ricoh_2A03_Signal_ready.
 
 ### `TRESX` Reset the cycle counters {#Ricoh_2A03_Signal_TRESX}
 
 Set when an instruction is finishing. It starts @ref Ricoh_2A03_Signal_T0, and
 clears @ref Ricoh_2A03_Signal_T2 through @ref Ricoh_2A03_Signal_T5 through
-`TRES2`. The instruction completion logic in the dispatcher makes it. The real
-chip outputs it active-low, as `#TRESX`.
+`TRES2`. The instruction completion logic in the @ref random_logic_controller
+makes it: after the memory cycle of an instruction that isn't a
+read-modify-write, after `T7`, on the last addressing cycle of the stack and
+jump instructions, on reset (@ref Ricoh_2A03_Signal_RESP) and on
+@ref Ricoh_2A03_Signal_BRK6E. The real chip outputs it active-low, as `#TRESX`.
 
 ### `SHIFT` Shift or rotate instruction {#Ricoh_2A03_Signal_SHIFT}
 
@@ -458,3 +500,44 @@ The I flag of the @ref MOS_6502_P_Register, which masks
 @ref Ricoh_2A03_Signal_IRQ. It reads as set during
 @ref Ricoh_2A03_Signal_BRK6E, so the handler starts with IRQs masked. The real
 chip outputs it active-low, as `/I_OUT`.
+
+## Random logic signals
+
+These are intermediate signals inside the @ref random_logic_controller, which
+don't leave it. See @ref Ricoh2A03_Instruction_Decoder. The real chip has many
+more; these are the ones the documentation refers to.
+
+### `BR0`, `BR2`, `BR3` Branch cycles {#Ricoh_2A03_Signal_BR}
+
+Decoder lines 73, 80 and 93: T0, T2 and T3 of a conditional branch. `BR0` is
+gated by @ref Ricoh_2A03_Signal_PRDY.
+
+### `BRTAKEN` Branch taken {#Ricoh_2A03_Signal_BRTAKEN}
+
+Set when the flag that IR6 and IR7 select (N, V, C or Z) equals
+@ref Ricoh_2A03_Signal_IR5. It is worked out every cycle, but only used during
+`BR2`. The real chip outputs it active-low, as `/BRTAKEN`.
+
+### `BRFW` Branch forward {#Ricoh_2A03_Signal_BRFW}
+
+Set when bit 7 of the branch offset, on DB during Phi1 after `BR2`, is clear.
+It holds until the next branch. At `BR3` it picks whether the ALU adds 1 to
+or subtracts 1 from PCH when the branch crosses a page.
+
+### `BRA` Branch without page crossing {#Ricoh_2A03_Signal_BRA}
+
+Set at `BR3` when the branch doesn't cross a page: forward without a carry out
+of PCL, or backward with one. It ends the branch, and increments PC.
+
+### `ACRL1`, `ACRL2` ACR latch {#Ricoh_2A03_Signal_ACRL}
+
+The ALU carry (@ref Ricoh2A03_ALU_ACR), held while the CPU isn't
+@ref Ricoh_2A03_Signal_ready. `ACRL2` is `ACRL1` a half-cycle later. A carry
+during indexed addressing adds the page-crossing cycle (`ACRL1`), and loads
+ABH again with the fixed-up high byte (`ACRL2`).
+
+### `ENDS`, `ENDX` End short or long instructions {#Ricoh_2A03_Signal_ENDS}
+
+`ENDS` ends an instruction at `T0`, or at `BR2` of a branch that isn't taken,
+through @ref Ricoh_2A03_Signal_TRES1. `ENDX` ends the longer ones through
+@ref Ricoh_2A03_Signal_TRESX. The real chip's `ENDX` net is active-low.
