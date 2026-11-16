@@ -28,6 +28,7 @@ python -m util.run_cocotb predecode_register cores.ricoh_2A03.decoder.verify_pre
 python -m util.run_cocotb predecode_logic cores.ricoh_2A03.decoder.verify_predecode_logic ./cores/ricoh_2A03/decoder/predecode_logic.vhdl
 python -m util.run_cocotb instruction_register cores.ricoh_2A03.decoder.verify_instruction_register ./cores/ricoh_2A03/decoder/instruction_register.vhdl
 python -m util.run_cocotb timing_generator cores.ricoh_2A03.decoder.verify_timing_generator ./cores/ricoh_2A03/decoder/timing_generator.vhdl
+python -m util.run_cocotb decoder_rom cores.ricoh_2A03.decoder.verify_decoder_rom ./cores/ricoh_2A03/decoder/decoder_rom.vhdl
 
 # CPU smoke test
 python -m util.run_cocotb mos_6502 cores.ricoh_2A03.sim_core ./cores/ricoh_2A03/alu/alu.vhdl ./cores/ricoh_2A03/alu/adder_hold_register.vhdl ./cores/ricoh_2A03/alu/a_input_register.vhdl ./cores/ricoh_2A03/alu/b_input_register.vhdl ./cores/ricoh_2A03/alu/core.vhdl ./cores/ricoh_2A03/datapath/index_register.vhdl ./cores/ricoh_2A03/datapath/accumulator.vhdl ./cores/ricoh_2A03/datapath/data_input_latch.vhdl ./cores/ricoh_2A03/datapath/data_output_latch.vhdl ./cores/ricoh_2A03/datapath/status_register.vhdl ./cores/ricoh_2A03/datapath/stack_pointer.vhdl ./cores/ricoh_2A03/datapath/bus_multiplexer.vhdl ./cores/ricoh_2A03/datapath/core.vhdl ./cores/ricoh_2A03/datapath/program_counter_low.vhdl ./cores/ricoh_2A03/datapath/program_counter_high.vhdl ./cores/ricoh_2A03/core.vhdl

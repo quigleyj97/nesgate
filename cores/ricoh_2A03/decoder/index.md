@@ -3,7 +3,9 @@
 This sub-core will hold the instruction decoder: the predecode stage, the
 instruction register, timing generation, and the decoder ROM that drives the
 @ref Ricoh_2A03_Signals "control signals". So far the predecode stage, the
-instruction register and the timing generation logic are implemented.
+instruction register, the timing generation logic and the decoder ROM are
+implemented. The random logic that turns the decoder lines into control signals
+isn't implemented yet.
 
 ## Components
 
@@ -11,6 +13,7 @@ instruction register and the timing generation logic are implemented.
 - @ref predecode_logic
 - @ref instruction_register
 - @ref timing_generator
+- @ref decoder_rom
 
 ## Predecode
 
@@ -23,8 +26,6 @@ register, replacing it with BRK while @ref Ricoh_2A03_Signal_0_IR is asserted.
 The real chip stores the opcode inverted and produces active-low `/TWOCYCLE`
 and `/IMPLIED` outputs. This core keeps everything active-high, like the rest
 of its control signals.
-
-Reference: [Breaknes: Predecode](https://github.com/emu-russia/breaks/blob/master/BreakingNESWiki_DeepL/6502/predecode.md)
 
 ## Instruction register
 
@@ -62,3 +63,24 @@ stalls it.
 The signals that drive the counters (`TRES1`, `TRESX`, `/ready`) come from the
 dispatch logic, which isn't implemented yet. The real chip outputs most of the
 timing signals active-low. This core keeps them all active-high.
+
+## Decoder ROM
+
+The @ref decoder_rom is a 21-to-130 demultiplexer, sometimes called the PLA. It
+decodes the opcode from the @ref instruction_register, and the cycle from the
+@ref timing_generator (@ref Ricoh_2A03_Signal_T0, @ref Ricoh_2A03_Signal_T1X
+and @ref Ricoh_2A03_Signal_T2 to @ref Ricoh_2A03_Signal_T5), into the 130
+@ref Ricoh_2A03_Decoder_Lines "decoder lines". It is purely combinational.
+
+Each line is a NOR gate on some of the 21 input lines: `/T0`, `/T1X`,
+`/T2`-`/T5`, both polarities of `IR2`-`IR7`, `/IR0`, `/IR1`, and `IR01` (`IR0`
+or `IR1`). So each line matches the opcodes in one cycle (or in any cycle). The
+masks come straight from the "raw bits" in the decoder table. The testbench
+checks them against the table's decoded masks, for every opcode and cycle.
+
+The extra logic that sits in the decoder area is part of this entity too. Line
+129 (push/pull) is removed from lines 83, 90 and 128. Line 73 (Branch T0) is
+gated by @ref Ricoh_2A03_Signal_PRDY. Line 128 (IMPL) also checks `IR0`.
+
+The real chip takes the cycle signals and outputs the lines active-low. This
+core keeps them all active-high.

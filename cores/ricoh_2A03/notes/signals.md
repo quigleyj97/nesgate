@@ -323,3 +323,30 @@ Set by the decoder lines for the addressing cycles of instructions with a
 memory operand (lines 111 and 122-125). Together with
 @ref Ricoh_2A03_Signal_SHIFT, it starts the read-modify-write cycles. The real
 chip outputs it active-low, as `/MemOP`.
+
+## Decoder ROM signals
+
+These signals come from or go to the @ref decoder_rom. See
+@ref Ricoh2A03_Instruction_Decoder.
+
+### Decoder lines {#Ricoh_2A03_Decoder_Lines}
+
+The 130 outputs of the @ref decoder_rom, numbered 0-129 as in the decoder table.
+Each line is set when the opcode in the @ref instruction_register matches its
+mask, during its cycle (or any cycle, for lines marked `TX`). The random logic
+combines them into the control signals on this page. The comments on
+`decoder_masks` in the @ref decoder_rom list what each line matches.
+
+A few lines have extra logic in the decoder area. Line 129 matches the stack
+push/pull instructions, and only removes them from lines 83, 90 and 128. Line 73
+(Branch T0, called `BR0` outside the decoder) is gated by
+@ref Ricoh_2A03_Signal_PRDY. Line 128 (IMPL) also checks that `IR0` is 0.
+
+The real chip outputs the lines active-low. This core keeps them active-high.
+
+### `PRDY` Previous ready {#Ricoh_2A03_Signal_PRDY}
+
+The external `RDY` pin, delayed by a chain of latches, so it says whether the
+CPU was ready on the previous cycle. It gates decoder line 73 (Branch T0): if
+the CPU wasn't ready when the previous instruction finished, the T0 cycle of a
+conditional branch is skipped. The real chip calls it `/PRDY`, active-low.

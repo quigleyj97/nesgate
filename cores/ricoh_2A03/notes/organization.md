@@ -13,7 +13,7 @@
     - [x] @ref predecode_logic
     - [x] @ref instruction_register
     - [x] @ref timing_generator - T0-T7 timing generation logic
-    - [ ] Instruction decoder ROM
+    - [x] @ref decoder_rom - the 130-line instruction decoder ROM
     - [ ] Interrupt controller
     - [ ] Ready controller
 - [x] @ref MOS_6502_PC_Registers
