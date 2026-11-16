@@ -32,7 +32,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Doxygen
-        uses: mattnotmitt/doxygen-action@1.9.8
+        uses: mattnotmitt/doxygen-action@edge
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
