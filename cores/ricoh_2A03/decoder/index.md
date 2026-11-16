@@ -3,9 +3,9 @@
 This sub-core will hold the instruction decoder: the predecode stage, the
 instruction register, timing generation, and the decoder ROM that drives the
 @ref Ricoh_2A03_Signals "control signals". So far the predecode stage, the
-instruction register, the timing generation logic, the decoder ROM and the
-ready control logic are implemented. The random logic that turns the decoder lines into control signals
-isn't implemented yet.
+instruction register, the timing generation logic, the decoder ROM, the
+ready control logic and the interrupt control logic are implemented. The random
+logic that turns the decoder lines into control signals isn't implemented yet.
 
 ## Components
 
@@ -15,6 +15,7 @@ isn't implemented yet.
 - @ref timing_generator
 - @ref decoder_rom
 - @ref ready_controller
+- @ref interrupt_controller
 
 ## Predecode
 
@@ -102,6 +103,48 @@ It also makes two delayed copies of the ready state:
 sit next to the `RDY` pad.
 
 The write sources (@ref Ricoh_2A03_Signal_STOR, @ref Ricoh_2A03_Signal_PC_DB,
-decoder lines 98 and 100) and @ref Ricoh_2A03_Signal_DORES come from random
-logic and interrupt logic that isn't implemented yet. The R/W pin's own latch
+decoder lines 98 and 100) come from random logic that isn't implemented yet.
+@ref Ricoh_2A03_Signal_DORES comes from the @ref interrupt_controller. The R/W pin's own latch
 isn't implemented either.
+
+## Interrupt control
+
+The @ref interrupt_controller handles the @ref Ricoh_2A03_Signal_NMI,
+@ref Ricoh_2A03_Signal_IRQ and @ref Ricoh_2A03_Signal_RES pins. The 6502
+handles all of them with the BRK sequence, the same 7 cycles as the BRK
+instruction:
+
+| Cycle | BRK sequence |
+|-------|--------------|
+| T0 | Check for interrupts, fetch the opcode (or force BRK) |
+| T1 | Fetch and discard the next byte |
+| T2 | Push PCH |
+| T3 | Push PCL |
+| T4 | Push P |
+| T5 | Read the vector low byte |
+| T6 | Read the vector high byte (`BRK6E`) |
+
+During @ref Ricoh_2A03_Signal_T0 (or T2 of a branch), a pending NMI, or an IRQ
+while the I flag (@ref Ricoh_2A03_Signal_I_OUT) is clear, clears
+@ref Ricoh_2A03_Signal_B_OUT. That makes the next fetch inject BRK, and pushes
+P with B clear. A reset (@ref Ricoh_2A03_Signal_DORES) clears it too, and turns
+the pushes into reads. The decoder only counts up to T5, so the interrupt logic
+makes the last cycle itself, and ends the sequence with
+@ref Ricoh_2A03_Signal_BRK6E.
+
+NMI is edge-triggered: a falling edge of `/NMI` is remembered (`DONMI`) until
+the next BRK sequence ends, and holding it low doesn't trigger another one. An
+NMI that arrives during a BRK or IRQ sequence, before T5, takes over its vector
+fetch, since the vector is only chosen at T5. One that arrives during the vector
+fetch waits for the next instruction.
+
+During T5 and T6 the controller pulls the low bits of ADL low
+(@ref Ricoh_2A03_Signal_0_ADL0, @ref Ricoh_2A03_Signal_0_ADL1,
+@ref Ricoh_2A03_Signal_0_ADL2), so the precharged bus reads the vector:
+`0xFFFA` for NMI, `0xFFFC` for reset, and `0xFFFE` for IRQ and BRK.
+
+On the real chip this logic sits in the dispatcher area, and the `/NMI`, `/IRQ`
+and `/RES` latches sit next to their pads. This core keeps every internal signal
+active-high, but the pins themselves are active-low. The I flag, the random
+logic that injects BRK, and the dispatch logic that uses `BRK6E` and
+@ref Ricoh_2A03_Signal_RESP aren't implemented yet.

@@ -394,8 +394,67 @@ Set while either half of the program counter drives the DB bus
 when JSR, BRK or an interrupt pushes the PC onto the stack. It makes a write
 cycle.
 
+## Interrupt control signals
+
+These signals come from or go to the @ref interrupt_controller. See
+@ref Ricoh2A03_Instruction_Decoder.
+
+### `/NMI` Non-maskable interrupt pin {#Ricoh_2A03_Signal_NMI}
+
+The external, active-low `/NMI` pin. A falling edge requests an NMI, even while
+the I flag is set. The pad latches it during @ref Ricoh_2A03_Phi2, as `NMIP`.
+Holding it low only requests one NMI: it must go high again before the next
+falling edge.
+
+### `/IRQ` Interrupt request pin {#Ricoh_2A03_Signal_IRQ}
+
+The external, active-low `/IRQ` pin. While it is low, and the I flag
+(@ref Ricoh_2A03_Signal_I_OUT) is clear, the CPU takes an IRQ at the end of the
+current instruction. The pad latches it during @ref Ricoh_2A03_Phi2 and then
+@ref Ricoh_2A03_Phi1, as `IRQP`, so it must be low a cycle before T0.
+
+### `/RES` Reset pin {#Ricoh_2A03_Signal_RES}
+
+The external, active-low `/RES` pin. While it is low, the CPU resets. The pad
+latches it during @ref Ricoh_2A03_Phi2 and then @ref Ricoh_2A03_Phi1, as
+@ref Ricoh_2A03_Signal_RESP.
+
+### `RESP` Reset pending {#Ricoh_2A03_Signal_RESP}
+
+The @ref Ricoh_2A03_Signal_RES pin is low, from the pad latches. It sets
+@ref Ricoh_2A03_Signal_DORES, and the dispatch logic uses it to restart the
+instruction sequence.
+
 ### `DORES` Reset in progress {#Ricoh_2A03_Signal_DORES}
 
-Set by the interrupt logic while the CPU is handling a reset. A reset runs the
-same sequence as BRK, but with every write turned into a read, so
-@ref Ricoh_2A03_Signal_WR stays low.
+Set by the interrupt logic while the CPU is handling a reset. It is latched from
+@ref Ricoh_2A03_Signal_RESP during @ref Ricoh_2A03_Phi2, and holds until
+@ref Ricoh_2A03_Signal_BRK6E. A reset runs the same sequence as BRK, but with
+every write turned into a read, so @ref Ricoh_2A03_Signal_WR stays low. It also
+clears @ref Ricoh_2A03_Signal_B_OUT, and selects the reset vector (`0xFFFC`).
+
+### `BRK6E` BRK cycle 6 end {#Ricoh_2A03_Signal_BRK6E}
+
+Set from @ref Ricoh_2A03_Phi2 of the last cycle of the BRK sequence, which
+fetches the high byte of the vector, through Phi1 of the next cycle, while the
+CPU is @ref Ricoh_2A03_Signal_ready. The decoder doesn't count this cycle: the
+interrupt logic starts it after decoder line 22 (BRK T5). It ends the sequence:
+it clears @ref Ricoh_2A03_Signal_DORES, the pending NMI and the interrupt state
+in @ref Ricoh_2A03_Signal_B_OUT, sets the I flag, and resets the timing logic.
+
+### `B_OUT` B flag {#Ricoh_2A03_Signal_B_OUT}
+
+Clear while the CPU is handling a hardware interrupt or a reset, and set
+otherwise. Interrupts are checked during @ref Ricoh_2A03_Signal_T0, or T2 of a
+branch (decoder line 80, `BR2`): a pending NMI, or `IRQP` while the I flag is
+clear, clears it until @ref Ricoh_2A03_Signal_BRK6E. While it's clear, the next
+opcode fetch is replaced with BRK (@ref Ricoh_2A03_Signal_0_IR), the PC isn't
+incremented, and P is pushed with B (bit 4) clear. A BRK instruction leaves it
+set, so the handler can tell them apart.
+
+### `I_OUT` Interrupt disable flag {#Ricoh_2A03_Signal_I_OUT}
+
+The I flag of the @ref MOS_6502_P_Register, which masks
+@ref Ricoh_2A03_Signal_IRQ. It reads as set during
+@ref Ricoh_2A03_Signal_BRK6E, so the handler starts with IRQs masked. The real
+chip outputs it active-low, as `/I_OUT`.

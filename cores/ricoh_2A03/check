@@ -27,6 +27,7 @@ ENTITIES=(
     timing_generator
     decoder_rom
     ready_controller
+    interrupt_controller
     mos_6502
 )
 
