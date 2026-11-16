@@ -224,3 +224,16 @@ outputs this active-low, as `/TWOCYCLE`.
 Set when the predecoded opcode matches `XXXX10X0`, a single-byte instruction
 with no operand. Used by the program counter increment logic. The real chip
 outputs this active-low, as `/IMPLIED`.
+
+## Instruction register signals
+
+These signals control the @ref instruction_register, and aren't produced by the
+decoder ROM. See @ref Ricoh2A03_Instruction_Decoder.
+
+### `FETCH` Load the instruction register {#Ricoh_2A03_Signal_FETCH}
+
+When asserted during @ref Ricoh_2A03_Phi1, loads the opcode from the
+@ref predecode_logic into the @ref instruction_register. It is driven by the
+dispatch logic on the first cycle of each instruction, and the instruction
+register holds its value while it's deasserted.
+

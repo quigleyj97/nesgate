@@ -23,6 +23,7 @@ ENTITIES=(
     mos_6502_datapath
     predecode_register
     predecode_logic
+    instruction_register
     mos_6502
 )
 

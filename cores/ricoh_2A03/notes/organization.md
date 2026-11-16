@@ -11,7 +11,7 @@
 - [~] @subpage Ricoh2A03_Instruction_Decoder
     - [x] @ref predecode_register
     - [x] @ref predecode_logic
-    - [ ] Instruction register
+    - [x] @ref instruction_register
     - [ ] Timing generation logic
     - [ ] Instruction decoder ROM
     - [ ] Interrupt controller
