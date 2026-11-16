@@ -245,7 +245,8 @@ by the decoder ROM. They tell the decoder ROM and the random logic which cycle
 of an instruction the CPU is on. See @ref Ricoh2A03_Instruction_Decoder.
 
 The real chip outputs `/T0`, `/T1X` and `/T2`-`/T5` active-low, and takes
-`/ready` active-low. This core keeps them all active-high.
+`/ready` active-low. This core keeps them all active-high. The cycle counters
+hold while @ref Ricoh_2A03_Signal_ready is low.
 
 ### `T0` Last cycle of an instruction {#Ricoh_2A03_Signal_T0}
 
@@ -291,15 +292,6 @@ switch the CPU to writing.
 Set on the cycle after @ref Ricoh_2A03_Signal_T6. It also finishes the
 instruction, through @ref Ricoh_2A03_Signal_TRESX.
 
-### `ready` CPU ready {#Ricoh_2A03_Signal_ready}
-
-Low while the CPU is stalled by the external `RDY` pin. It is latched during
-@ref Ricoh_2A03_Phi2, so a stall holds from Phi2 through the next Phi1. While
-it's low, the timing logic holds its current cycle, and the stalled cycle
-repeats the one before it. The ready control logic makes it, and keeps it high
-during write cycles, since the 6502 can only stall on reads. The real chip
-calls it `/ready`, active-low.
-
 ### `TRES1` Reset the short cycle counter {#Ricoh_2A03_Signal_TRES1}
 
 Starts @ref Ricoh_2A03_Signal_T1 on the next cycle, which begins the next
@@ -344,9 +336,66 @@ push/pull instructions, and only removes them from lines 83, 90 and 128. Line 73
 
 The real chip outputs the lines active-low. This core keeps them active-high.
 
+## Ready control signals
+
+These signals come from or go to the @ref ready_controller. See
+@ref Ricoh2A03_Instruction_Decoder.
+
+### `RDY` Ready pin {#Ricoh_2A03_Signal_RDY}
+
+The external `RDY` pin. Pulling it low stalls the CPU on its next read cycle,
+e.g. while another device uses the bus for DMA. The CPU can't stall on a write
+cycle, so a write finishes first.
+
+### `ready` CPU ready {#Ricoh_2A03_Signal_ready}
+
+Low while the CPU is stalled by @ref Ricoh_2A03_Signal_RDY. It is latched
+during @ref Ricoh_2A03_Phi2, so a stall holds from Phi2 through the next Phi1.
+While it's low, the timing logic holds its current cycle, and the stalled cycle
+repeats the one before it. The @ref ready_controller keeps it high during write
+cycles (@ref Ricoh_2A03_Signal_WR from the last Phi1), since the 6502 can only
+stall on reads. The real chip calls it `/ready`, active-low.
+
+### `ReadyPhi1` Ready during Phi1 {#Ricoh_2A03_Signal_ReadyPhi1}
+
+@ref Ricoh_2A03_Signal_ready latched during @ref Ricoh_2A03_Phi1, and held
+through Phi2 while `ready` itself changes. The ACR latch and the branch logic use
+it. The real chip outputs it active-low, as `NotReadyPhi1`.
+
 ### `PRDY` Previous ready {#Ricoh_2A03_Signal_PRDY}
 
-The external `RDY` pin, delayed by a chain of latches, so it says whether the
-CPU was ready on the previous cycle. It gates decoder line 73 (Branch T0): if
-the CPU wasn't ready when the previous instruction finished, the T0 cycle of a
-conditional branch is skipped. The real chip calls it `/PRDY`, active-low.
+@ref Ricoh_2A03_Signal_RDY latched during @ref Ricoh_2A03_Phi2 and then
+@ref Ricoh_2A03_Phi1, so it says whether `RDY` was high on the previous cycle.
+It gates decoder line 73 (Branch T0): if the CPU wasn't ready when the previous
+instruction finished, the T0 cycle of a conditional branch is skipped. On the
+real chip these latches sit next to the `RDY` pad, and output it active-low, as
+`/PRDY`.
+
+### `WR` Write cycle {#Ricoh_2A03_Signal_WR}
+
+Set when the CPU writes to memory on this cycle. The R/W pin latches it during
+@ref Ricoh_2A03_Phi1, as @ref Ricoh_Signal_R_NOT_W. It is set from Phi2 of a
+cycle with any of the write sources, and holds through the next Phi1. The
+sources are @ref Ricoh_2A03_Signal_STOR, @ref Ricoh_2A03_Signal_PC_DB, decoder
+line 98 (BRK T4), decoder line 100 (push T2), @ref Ricoh_2A03_Signal_T6 and
+@ref Ricoh_2A03_Signal_T7. It is never set while the CPU isn't
+@ref Ricoh_2A03_Signal_ready, or during reset (@ref Ricoh_2A03_Signal_DORES).
+
+### `STOR` Store cycle {#Ricoh_2A03_Signal_STOR}
+
+Set on the memory cycle of a store instruction: decoder line 97 (STORE)
+together with @ref Ricoh_2A03_Signal_MemOP. It makes a write cycle, and the
+random logic also uses it to put the register being stored on the data bus.
+
+### `PC/DB` PC to data bus {#Ricoh_2A03_Signal_PC_DB}
+
+Set while either half of the program counter drives the DB bus
+(@ref Ricoh_2A03_Signal_PCL_DB or @ref Ricoh_2A03_Signal_PCH_DB), which happens
+when JSR, BRK or an interrupt pushes the PC onto the stack. It makes a write
+cycle.
+
+### `DORES` Reset in progress {#Ricoh_2A03_Signal_DORES}
+
+Set by the interrupt logic while the CPU is handling a reset. A reset runs the
+same sequence as BRK, but with every write turned into a read, so
+@ref Ricoh_2A03_Signal_WR stays low.

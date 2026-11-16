@@ -3,8 +3,8 @@
 This sub-core will hold the instruction decoder: the predecode stage, the
 instruction register, timing generation, and the decoder ROM that drives the
 @ref Ricoh_2A03_Signals "control signals". So far the predecode stage, the
-instruction register, the timing generation logic and the decoder ROM are
-implemented. The random logic that turns the decoder lines into control signals
+instruction register, the timing generation logic, the decoder ROM and the
+ready control logic are implemented. The random logic that turns the decoder lines into control signals
 isn't implemented yet.
 
 ## Components
@@ -14,6 +14,7 @@ isn't implemented yet.
 - @ref instruction_register
 - @ref timing_generator
 - @ref decoder_rom
+- @ref ready_controller
 
 ## Predecode
 
@@ -60,8 +61,8 @@ While @ref Ricoh_2A03_Signal_ready is low, the counters hold their current
 cycle, and `T7` doesn't start. `T1` just follows `TRES1`, so the dispatch logic
 stalls it.
 
-The signals that drive the counters (`TRES1`, `TRESX`, `/ready`) come from the
-dispatch logic, which isn't implemented yet. The real chip outputs most of the
+`TRES1` and `TRESX` come from the dispatch logic, which isn't implemented yet.
+`ready` comes from the @ref ready_controller. The real chip outputs most of the
 timing signals active-low. This core keeps them all active-high.
 
 ## Decoder ROM
@@ -84,3 +85,23 @@ gated by @ref Ricoh_2A03_Signal_PRDY. Line 128 (IMPL) also checks `IR0`.
 
 The real chip takes the cycle signals and outputs the lines active-low. This
 core keeps them all active-high.
+
+## Ready control
+
+The @ref ready_controller stalls the CPU while the external
+@ref Ricoh_2A03_Signal_RDY pin is low, by dropping
+@ref Ricoh_2A03_Signal_ready, which holds the @ref timing_generator on its
+current cycle. The 6502 can only stall on read cycles, so it also works out
+which cycles write (@ref Ricoh_2A03_Signal_WR). A cycle that wrote during the
+last Phi1 stays ready whatever `RDY` does, and a stalled cycle never writes.
+
+It also makes two delayed copies of the ready state:
+@ref Ricoh_2A03_Signal_ReadyPhi1 for the ACR latch and branch logic, and
+@ref Ricoh_2A03_Signal_PRDY for the @ref decoder_rom. On the real chip the
+`/ready` and `WR` latches are part of the dispatcher, and the `/PRDY` latches
+sit next to the `RDY` pad.
+
+The write sources (@ref Ricoh_2A03_Signal_STOR, @ref Ricoh_2A03_Signal_PC_DB,
+decoder lines 98 and 100) and @ref Ricoh_2A03_Signal_DORES come from random
+logic and interrupt logic that isn't implemented yet. The R/W pin's own latch
+isn't implemented either.

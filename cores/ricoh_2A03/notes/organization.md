@@ -15,7 +15,8 @@
     - [x] @ref timing_generator - T0-T7 timing generation logic
     - [x] @ref decoder_rom - the 130-line instruction decoder ROM
     - [ ] Interrupt controller
-    - [ ] Ready controller
+    - [x] @ref ready_controller - ready, WR, ReadyPhi1 and PRDY
+    - [ ] Random logic and dispatch controller
 - [x] @ref MOS_6502_PC_Registers
     - [x] @ref program_counter_low - PCLS, PCL and increment logic
     - [x] @ref program_counter_high - PCHS, PCH and increment logic

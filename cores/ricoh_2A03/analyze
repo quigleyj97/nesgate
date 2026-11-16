@@ -24,6 +24,7 @@ FILES=(
     "../cores/ricoh_2A03/decoder/instruction_register.vhdl"
     "../cores/ricoh_2A03/decoder/timing_generator.vhdl"
     "../cores/ricoh_2A03/decoder/decoder_rom.vhdl"
+    "../cores/ricoh_2A03/decoder/ready_controller.vhdl"
     "../cores/ricoh_2A03/core.vhdl"
 )
 
