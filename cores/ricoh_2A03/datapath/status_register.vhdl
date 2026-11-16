@@ -50,13 +50,15 @@ architecture rtl of status_register is
     signal DBZ: std_ulogic;
     signal register_data: std_ulogic_vector(7 downto 0) := (others => '0');
 begin
+    -- DBZ is high only when every bit of DB is low (a NOR of the whole bus)
     DBZ <= not (
-        db_bus_in(1) and
-        db_bus_in(2) and
-        db_bus_in(3) and
-        db_bus_in(4) and
-        db_bus_in(5) and
-        db_bus_in(6) and
+        db_bus_in(0) or
+        db_bus_in(1) or
+        db_bus_in(2) or
+        db_bus_in(3) or
+        db_bus_in(4) or
+        db_bus_in(5) or
+        db_bus_in(6) or
         db_bus_in(7)
     );
     -- Bit 4 is straight up not wired to the DB bus at all, and 5 is hardwired as 1

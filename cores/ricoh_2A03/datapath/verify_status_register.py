@@ -80,6 +80,27 @@ async def test_status_register_ir5(dut: "DUT"):
     await Timer(1, unit="fs")
     assert dut.register_data.value == 0b0000_0000
 
+@cocotb.test()
+async def test_status_register_dbz(dut: "DUT"):
+    """DBZ/Z sets Z only when every bit of DB is zero."""
+    set_signals_low(dut)
+    dut.signal_DBZ_Z.value = True
+    await Timer(1, unit="fs")
+    assert dut.DBZ.value == True
+    assert dut.register_data.value == 0b0000_0010
+    # Any single set bit, including bit 0, means DB isn't zero
+    for bit in range(8):
+        dut.db_bus_in.value = 1 << bit
+        await Timer(1, unit="fs")
+        assert dut.DBZ.value == False, f"DBZ high with DB = {1 << bit:#04x}"
+        assert dut.register_data.value == 0b0000_0000
+    for value in [0x7F, 0xFE, 0xFF]:
+        dut.db_bus_in.value = value
+        await Timer(1, unit="fs")
+        assert dut.DBZ.value == False, f"DBZ high with DB = {value:#04x}"
+    dut.signal_DBZ_Z.value = False
+    await Timer(1, unit="fs")
+
 def set_signals_low(dut: "DUT"):
     dut.signal_DB0_C.value = False
     dut.signal_IR5_C.value = False
