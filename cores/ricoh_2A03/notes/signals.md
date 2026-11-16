@@ -237,3 +237,89 @@ When asserted during @ref Ricoh_2A03_Phi1, loads the opcode from the
 dispatch logic on the first cycle of each instruction, and the instruction
 register holds its value while it's deasserted.
 
+
+## Timing signals
+
+These signals come from or go to the @ref timing_generator, and aren't produced
+by the decoder ROM. They tell the decoder ROM and the random logic which cycle
+of an instruction the CPU is on. See @ref Ricoh2A03_Instruction_Decoder.
+
+The real chip outputs `/T0`, `/T1X` and `/T2`-`/T5` active-low, and takes
+`/ready` active-low. This core keeps them all active-high.
+
+### `T0` Last cycle of an instruction {#Ricoh_2A03_Signal_T0}
+
+Set on the last cycle of an instruction, which on the 6502 overlaps with
+fetching the next opcode. It is set after @ref Ricoh_2A03_Signal_TRESX, or on
+the second cycle of a @ref Ricoh_2A03_Signal_TWOCYCLE instruction, but never
+during @ref Ricoh_2A03_Signal_T1. It stays set until
+@ref Ricoh_2A03_Signal_T1X follows it.
+
+### `T1` Opcode fetch cycle {#Ricoh_2A03_Signal_T1}
+
+Set on the cycle that fetches an opcode, which is the first cycle of an
+instruction. It is @ref Ricoh_2A03_Signal_TRES1, latched during
+@ref Ricoh_2A03_Phi1. It also drives the external `SYNC` pin, and the dispatch
+logic uses it to make @ref Ricoh_2A03_Signal_FETCH.
+
+### `T1X` Cycle after T0 {#Ricoh_2A03_Signal_T1X}
+
+Set on the cycle after @ref Ricoh_2A03_Signal_T0, which is normally the opcode
+fetch cycle (@ref Ricoh_2A03_Signal_T1) of the next instruction. It ends `T0`.
+The decoder ROM uses `T1X` rather than `T1`.
+
+### `T2` Second cycle {#Ricoh_2A03_Signal_T2}
+### `T3` Third cycle {#Ricoh_2A03_Signal_T3}
+### `T4` Fourth cycle {#Ricoh_2A03_Signal_T4}
+### `T5` Fifth cycle {#Ricoh_2A03_Signal_T5}
+
+The extended cycle counter, a shift register that moves
+@ref Ricoh_2A03_Signal_T1 along one stage per cycle. `T2` follows `T1`, `T3`
+follows `T2`, and so on, until `TRES2` clears them. `TRES2` is
+@ref Ricoh_2A03_Signal_TRESX, latched during @ref Ricoh_2A03_Phi1.
+
+### `T6` First read-modify-write cycle {#Ricoh_2A03_Signal_T6}
+
+Set on the cycle after one with both @ref Ricoh_2A03_Signal_SHIFT and
+@ref Ricoh_2A03_Signal_MemOP set, during a read-modify-write instruction. A
+read-modify-write instruction writes twice, first the unmodified value and then
+the modified one. The R/W logic uses `T6` and @ref Ricoh_2A03_Signal_T7 to
+switch the CPU to writing.
+
+### `T7` Second read-modify-write cycle {#Ricoh_2A03_Signal_T7}
+
+Set on the cycle after @ref Ricoh_2A03_Signal_T6. It also finishes the
+instruction, through @ref Ricoh_2A03_Signal_TRESX.
+
+### `ready` CPU ready {#Ricoh_2A03_Signal_ready}
+
+Low while the CPU is stalled by the external `RDY` pin. It is latched during
+@ref Ricoh_2A03_Phi2, so a stall holds from Phi2 through the next Phi1. While
+it's low, the timing logic holds its current cycle, and the stalled cycle
+repeats the one before it. The ready control logic makes it, and keeps it high
+during write cycles, since the 6502 can only stall on reads. The real chip
+calls it `/ready`, active-low.
+
+### `TRES1` Reset the short cycle counter {#Ricoh_2A03_Signal_TRES1}
+
+Starts @ref Ricoh_2A03_Signal_T1 on the next cycle, which begins the next
+instruction. The instruction completion logic in the dispatcher makes it.
+
+### `TRESX` Reset the cycle counters {#Ricoh_2A03_Signal_TRESX}
+
+Set when an instruction is finishing. It starts @ref Ricoh_2A03_Signal_T0, and
+clears @ref Ricoh_2A03_Signal_T2 through @ref Ricoh_2A03_Signal_T5 through
+`TRES2`. The instruction completion logic in the dispatcher makes it. The real
+chip outputs it active-low, as `#TRESX`.
+
+### `SHIFT` Shift or rotate instruction {#Ricoh_2A03_Signal_SHIFT}
+
+Set for the shift and rotate instructions, and for INC and DEC (decoder lines
+106 and 107). The real chip outputs it active-low, as `/SHIFT`.
+
+### `MemOP` Memory operand addressing {#Ricoh_2A03_Signal_MemOP}
+
+Set by the decoder lines for the addressing cycles of instructions with a
+memory operand (lines 111 and 122-125). Together with
+@ref Ricoh_2A03_Signal_SHIFT, it starts the read-modify-write cycles. The real
+chip outputs it active-low, as `/MemOP`.

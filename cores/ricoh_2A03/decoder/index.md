@@ -2,14 +2,15 @@
 
 This sub-core will hold the instruction decoder: the predecode stage, the
 instruction register, timing generation, and the decoder ROM that drives the
-@ref Ricoh_2A03_Signals "control signals". So far only the predecode stage is
-implemented, plus the instruction register.
+@ref Ricoh_2A03_Signals "control signals". So far the predecode stage, the
+instruction register and the timing generation logic are implemented.
 
 ## Components
 
 - @ref predecode_register
 - @ref predecode_logic
 - @ref instruction_register
+- @ref timing_generator
 
 ## Predecode
 
@@ -35,3 +36,29 @@ already latching the next byte from the data bus.
 The real chip stores the opcode inverted, outputs both polarities of each bit,
 and merges `IR0` and `IR1` into one `IR01` line. This core outputs only the true
 opcode, and leaves the inverted bits and `IR01` to the decoder.
+
+## Timing generation
+
+The @ref timing_generator tells the decoder ROM and the random logic which
+cycle of an instruction the CPU is on. On the real chip this logic is spread
+across the dispatcher, in between the rest of the random logic, but this core
+models it as one unit, following the "Timing Generation Logic" block of Dr. 
+Hanson's block diagram. It is three counters:
+
+- The short cycle counter makes @ref Ricoh_2A03_Signal_T0, the last cycle of an
+  instruction, and @ref Ricoh_2A03_Signal_T1X, the cycle after it.
+  @ref Ricoh_2A03_Signal_T1, the opcode fetch cycle, comes from
+  @ref Ricoh_2A03_Signal_TRES1 latched during @ref Ricoh_2A03_Phi1.
+- The extended cycle counter shifts `T1` through @ref Ricoh_2A03_Signal_T2 to
+  @ref Ricoh_2A03_Signal_T5, one cycle at a time.
+  @ref Ricoh_2A03_Signal_TRESX clears it.
+- The very long cycle counter makes the read-modify-write cycles
+  @ref Ricoh_2A03_Signal_T6 and @ref Ricoh_2A03_Signal_T7.
+
+While @ref Ricoh_2A03_Signal_ready is low, the counters hold their current
+cycle, and `T7` doesn't start. `T1` just follows `TRES1`, so the dispatch logic
+stalls it.
+
+The signals that drive the counters (`TRES1`, `TRESX`, `/ready`) come from the
+dispatch logic, which isn't implemented yet. The real chip outputs most of the
+timing signals active-low. This core keeps them all active-high.

@@ -22,6 +22,7 @@ FILES=(
     "../cores/ricoh_2A03/decoder/predecode_register.vhdl"
     "../cores/ricoh_2A03/decoder/predecode_logic.vhdl"
     "../cores/ricoh_2A03/decoder/instruction_register.vhdl"
+    "../cores/ricoh_2A03/decoder/timing_generator.vhdl"
     "../cores/ricoh_2A03/core.vhdl"
 )
 

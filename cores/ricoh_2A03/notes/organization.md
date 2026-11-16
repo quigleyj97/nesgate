@@ -12,7 +12,7 @@
     - [x] @ref predecode_register
     - [x] @ref predecode_logic
     - [x] @ref instruction_register
-    - [ ] Timing generation logic
+    - [x] @ref timing_generator - T0-T7 timing generation logic
     - [ ] Instruction decoder ROM
     - [ ] Interrupt controller
     - [ ] Ready controller

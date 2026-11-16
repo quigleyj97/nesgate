@@ -24,6 +24,7 @@ ENTITIES=(
     predecode_register
     predecode_logic
     instruction_register
+    timing_generator
     mos_6502
 )
 
