@@ -1,15 +1,36 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
+--! @file
+--! @brief Processor status register (P) for the 6502
+--! @details Holds the C, Z, I, D, V and N flags (@ref MOS_6502_P_Register).
+--! Each flag loads from whichever of its sources the random logic selects, and
+--! holds its value otherwise.
+--!
+--! The flag load commands come from output latches in the
+--! @ref random_logic_controller that are loaded during Phi2, so they stay high
+--! through Phi2 as well as the Phi1 that follows. On the real chip, the flags
+--! only take a new value during Phi1, while the buses hold valid data. During
+--! Phi2 they just refresh. This register is sampled on the @ref metaclock
+--! while `phi1` is high, so a flag can't pick up DB while it's precharging.
+--!
+--! If more than one source of a flag is selected at once, the flag holds its
+--! value. The random logic never does that.
+--!
+--! The flags are also output to the random logic and the interrupt controller
+--! (`*_OUT`), active-high, unlike the real chip.
+
 --! Processor status register (P) for the 6502
 --! @ref MOS_6502_P_Register
 entity status_register is
     port(
+        --! @ref Ricoh_2A03_Phi1. The flags only load while this is high.
+        phi1: in std_ulogic;
         --! @ref Ricoh_2A03_DB, as resolved by @ref bus_multiplexer
         db_bus_in: in std_ulogic_vector(7 downto 0);
         --! Drives @ref Ricoh_2A03_DB, 'Z' when not enabled
         db_bus_out: out std_ulogic_vector(7 downto 0);
-        --! @ref Ricoh_2A03_Signal_P_DB
+        --! @ref Ricoh_Signal_P_DB
         enable_P_DB: in std_ulogic;
         --! @ref Ricoh_2A03_Signal_IR5
         signal_IR5: in std_ulogic;
@@ -41,8 +62,25 @@ entity status_register is
         signal_AVR_V: in std_ulogic;
         --! @ref Ricoh_Signal_1_V
         signal_1_V: in std_ulogic;
+        --! @ref Ricoh_Signal_0_V
+        signal_0_V: in std_ulogic;
         --! @ref Ricoh_Signal_DB7_N
-        signal_DB7_N: in std_ulogic
+        signal_DB7_N: in std_ulogic;
+        --! @ref Ricoh_2A03_Signal_C_OUT
+        carry_flag_C_OUT: out std_ulogic;
+        --! @ref Ricoh_2A03_Signal_Z_OUT
+        zero_flag_Z_OUT: out std_ulogic;
+        --! @ref Ricoh_2A03_Signal_I_OUT
+        interrupt_disable_I_OUT: out std_ulogic;
+        --! @ref Ricoh_2A03_Signal_D_OUT
+        decimal_flag_D_OUT: out std_ulogic;
+        --! @ref Ricoh_2A03_Signal_V_OUT
+        overflow_flag_V_OUT: out std_ulogic;
+        --! @ref Ricoh_2A03_Signal_N_OUT
+        negative_flag_N_OUT: out std_ulogic;
+        --! Clock to drive the latch circuitry
+        --! @ref metaclock
+        metaclock: in std_ulogic
     );
 end entity;
 
@@ -69,87 +107,62 @@ begin
     db_bus_out(4) <= 'Z';
     db_bus_out(3 downto 0) <= register_data(3 downto 0) when enable_P_DB = '1' else (others => 'Z');
 
-    process(signal_DB0_C, signal_IR5_C, signal_ACR_C, db_bus_in(0), signal_ACR, signal_IR5)
-        variable sensitivity: std_ulogic_vector(2 downto 0);
-    begin
-        sensitivity := signal_DB0_C & signal_IR5_C & signal_ACR_C;
-        case sensitivity is
-            when "100" =>
-                register_data(0) <= db_bus_in(0);
-            when "010" =>
-                register_data(0) <= signal_IR5;
-            when "001" =>
-                register_data(0) <= signal_ACR;
-            when others =>
-                register_data(0) <= register_data(0);
-        end case;
-    end process;
+    carry_flag_C_OUT <= register_data(0);
+    zero_flag_Z_OUT <= register_data(1);
+    interrupt_disable_I_OUT <= register_data(2);
+    decimal_flag_D_OUT <= register_data(3);
+    overflow_flag_V_OUT <= register_data(6);
+    negative_flag_N_OUT <= register_data(7);
 
-    process(signal_DB1_Z, signal_DBZ_Z, db_bus_in(1), DBZ)
-        variable sensitivity: std_ulogic_vector(1 downto 0);
+    process(metaclock)
+        variable select_C: std_ulogic_vector(2 downto 0);
+        variable select_Z: std_ulogic_vector(1 downto 0);
+        variable select_I: std_ulogic_vector(1 downto 0);
+        variable select_D: std_ulogic_vector(1 downto 0);
+        variable select_V: std_ulogic_vector(3 downto 0);
     begin
-        sensitivity := signal_DB1_Z & signal_DBZ_Z;
-        case sensitivity is
-            when "10" =>
-                register_data(1) <= db_bus_in(1);
-            when "01" =>
-                register_data(1) <= DBZ;
-            when others =>
-                register_data(1) <= register_data(1);
-        end case;
-    end process;
+        if rising_edge(metaclock) and phi1 = '1' then
+            select_C := signal_DB0_C & signal_IR5_C & signal_ACR_C;
+            case select_C is
+                when "100" => register_data(0) <= db_bus_in(0);
+                when "010" => register_data(0) <= signal_IR5;
+                when "001" => register_data(0) <= signal_ACR;
+                when others => null;
+            end case;
 
-    process(signal_DB2_I, signal_IR5_I, db_bus_in(2), signal_IR5)
-        variable sensitivity: std_ulogic_vector(1 downto 0);
-    begin
-        sensitivity := signal_DB2_I & signal_IR5_I;
-        case sensitivity is
-            when "10" =>
-                register_data(2) <= db_bus_in(2);
-            when "01" =>
-                register_data(2) <= signal_IR5;
-            when others =>
-                register_data(2) <= register_data(2);
-        end case;
-    end process;
+            select_Z := signal_DB1_Z & signal_DBZ_Z;
+            case select_Z is
+                when "10" => register_data(1) <= db_bus_in(1);
+                when "01" => register_data(1) <= DBZ;
+                when others => null;
+            end case;
 
-    process(signal_DB3_D, signal_IR5_D, db_bus_in(3), signal_IR5)
-        variable sensitivity: std_ulogic_vector(1 downto 0);
-    begin
-        sensitivity := signal_DB3_D & signal_IR5_D;
-        case sensitivity is
-            when "10" =>
-                register_data(3) <= db_bus_in(3);
-            when "01" =>
-                register_data(3) <= signal_IR5;
-            when others =>
-                register_data(3) <= register_data(3);
-        end case;
-    end process;
+            select_I := signal_DB2_I & signal_IR5_I;
+            case select_I is
+                when "10" => register_data(2) <= db_bus_in(2);
+                when "01" => register_data(2) <= signal_IR5;
+                when others => null;
+            end case;
 
-    process(signal_DB6_V, signal_AVR_V, signal_1_V, db_bus_in(6), signal_AVR, signal_1_V)
-        variable sensitivity: std_ulogic_vector(2 downto 0);
-    begin
-        sensitivity := signal_DB6_V & signal_AVR_V & signal_1_V;
-        case sensitivity is
-            when "100" =>
-                register_data(6) <= db_bus_in(6);
-            when "010" =>
-                register_data(6) <= signal_AVR;
-            when "001" =>
-                register_data(6) <= signal_1_V;
-            when others =>
-                register_data(6) <= register_data(6);
-        end case;
-    end process;
+            select_D := signal_DB3_D & signal_IR5_D;
+            case select_D is
+                when "10" => register_data(3) <= db_bus_in(3);
+                when "01" => register_data(3) <= signal_IR5;
+                when others => null;
+            end case;
 
-    process(signal_DB7_N, db_bus_in(7))
-    begin
-        case (signal_DB7_N) is
-            when '1' =>
+            select_V := signal_DB6_V & signal_AVR_V & signal_1_V & signal_0_V;
+            case select_V is
+                when "1000" => register_data(6) <= db_bus_in(6);
+                when "0100" => register_data(6) <= signal_AVR;
+                when "0010" => register_data(6) <= '1';
+                when "0001" => register_data(6) <= '0';
+                when others => null;
+            end case;
+
+            if signal_DB7_N = '1' then
                 register_data(7) <= db_bus_in(7);
-            when others =>
-                register_data(7) <= register_data(7);
-        end case;
+            end if;
+        end if;
     end process;
 end architecture;

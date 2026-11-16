@@ -67,6 +67,7 @@ CONTROL_SIGNALS = [
     "signal_DB6_V",
     "signal_AVR_V",
     "signal_1_V",
+    "signal_0_V",
     "signal_DB7_N",
 ]
 
@@ -197,6 +198,90 @@ async def test_accumulator_to_db(dut: "DUT"):
     dut.output_enable_AC_DB.value = 1
     await Timer(1, unit="ns")
     assert dut.databus_DB.value == 0xC3
+
+
+@cocotb.test()
+async def test_status_flags_load_from_db(dut: "DUT"):
+    """The status register loads its flags from DB during phi1, and outputs them."""
+    await reset(dut)
+    dut.drive_DB.value = 0b1100_1001
+    for name in ["signal_DB0_C", "signal_DB1_Z", "signal_DB2_I", "signal_DB3_D", "signal_DB6_V", "signal_DB7_N"]:
+        getattr(dut, name).value = 1
+    await phase(dut.phi1)
+    for name in ["signal_DB0_C", "signal_DB1_Z", "signal_DB2_I", "signal_DB3_D", "signal_DB6_V", "signal_DB7_N"]:
+        getattr(dut, name).value = 0
+    dut.drive_DB.value = UNDRIVEN
+    await Timer(1, unit="ns")
+    assert dut.carry_flag_C_OUT.value == 1
+    assert dut.zero_flag_Z_OUT.value == 0
+    assert dut.interrupt_disable_I_OUT.value == 0
+    assert dut.decimal_flag_D_OUT.value == 1
+    assert dut.overflow_flag_V_OUT.value == 1
+    assert dut.negative_flag_N_OUT.value == 1
+
+    dut.output_enable_P_DB.value = 1
+    await Timer(1, unit="ns")
+    # Bit 4 isn't driven, so it reads the precharge
+    assert dut.databus_DB.value == 0b1111_1001
+    dut.output_enable_P_DB.value = 0
+
+    dut.signal_0_V.value = 1
+    await phase(dut.phi1)
+    dut.signal_0_V.value = 0
+    assert dut.overflow_flag_V_OUT.value == 0
+
+
+async def load_flags(dut: "DUT", *names: str):
+    """Assert the given status register load commands through a phi1 phase."""
+    for name in names:
+        getattr(dut, name).value = 1
+    await phase(dut.phi1)
+    for name in names:
+        getattr(dut, name).value = 0
+    await Timer(1, unit="ns")
+
+
+@cocotb.test()
+async def test_status_flag_sources(dut: "DUT"):
+    """Every status register input besides DB is wired through, and loads only during phi1."""
+    await reset(dut)
+
+    # IR5/C, IR5/I and IR5/D load from IR5
+    dut.signal_IR5.value = 1
+    await load_flags(dut, "signal_IR5_C", "signal_IR5_I", "signal_IR5_D")
+    dut.signal_IR5.value = 0
+    assert dut.carry_flag_C_OUT.value == 1
+    assert dut.interrupt_disable_I_OUT.value == 1
+    assert dut.decimal_flag_D_OUT.value == 1
+
+    # ACR/C and AVR/V load from the ALU flags
+    dut.signal_ACR.value = 0
+    dut.signal_AVR.value = 1
+    await load_flags(dut, "signal_ACR_C", "signal_AVR_V")
+    dut.signal_AVR.value = 0
+    assert dut.carry_flag_C_OUT.value == 0
+    assert dut.overflow_flag_V_OUT.value == 1
+
+    # 0/V clears V, and 1/V sets it
+    await load_flags(dut, "signal_0_V")
+    assert dut.overflow_flag_V_OUT.value == 0
+    await load_flags(dut, "signal_1_V")
+    assert dut.overflow_flag_V_OUT.value == 1
+
+    # DBZ/Z sets Z when DB is zero, and clears it when it isn't
+    dut.drive_DB.value = 0x00
+    await load_flags(dut, "signal_DBZ_Z")
+    assert dut.zero_flag_Z_OUT.value == 1
+    dut.drive_DB.value = 0x10
+    await load_flags(dut, "signal_DBZ_Z")
+    assert dut.zero_flag_Z_OUT.value == 0
+    dut.drive_DB.value = UNDRIVEN
+
+    # Outside phi1 (here, during phi2) a load command doesn't change the flags
+    dut.signal_0_V.value = 1
+    await phase(dut.phi2)
+    dut.signal_0_V.value = 0
+    assert dut.overflow_flag_V_OUT.value == 1, "V cleared outside phi1"
 
 
 @cocotb.test()

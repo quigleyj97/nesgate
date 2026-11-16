@@ -162,8 +162,25 @@ entity mos_6502_datapath is
         signal_AVR_V: in std_ulogic;
         --! @ref Ricoh_Signal_1_V
         signal_1_V: in std_ulogic;
+        --! @ref Ricoh_Signal_0_V
+        signal_0_V: in std_ulogic;
         --! @ref Ricoh_Signal_DB7_N
-        signal_DB7_N: in std_ulogic
+        signal_DB7_N: in std_ulogic;
+        -- #endregion
+
+        -- #region Flags
+        --! @ref Ricoh_2A03_Signal_C_OUT
+        carry_flag_C_OUT: out std_ulogic;
+        --! @ref Ricoh_2A03_Signal_Z_OUT
+        zero_flag_Z_OUT: out std_ulogic;
+        --! @ref Ricoh_2A03_Signal_I_OUT
+        interrupt_disable_I_OUT: out std_ulogic;
+        --! @ref Ricoh_2A03_Signal_D_OUT
+        decimal_flag_D_OUT: out std_ulogic;
+        --! @ref Ricoh_2A03_Signal_V_OUT
+        overflow_flag_V_OUT: out std_ulogic;
+        --! @ref Ricoh_2A03_Signal_N_OUT
+        negative_flag_N_OUT: out std_ulogic
         -- #endregion
     );
 end entity;
@@ -245,6 +262,7 @@ architecture rtl of mos_6502_datapath is
     end component;
     component status_register is
         port(
+            phi1: in std_ulogic;
             db_bus_in: in std_ulogic_vector(7 downto 0);
             db_bus_out: out std_ulogic_vector(7 downto 0);
             enable_P_DB: in std_ulogic;
@@ -263,7 +281,15 @@ architecture rtl of mos_6502_datapath is
             signal_DB6_V: in std_ulogic;
             signal_AVR_V: in std_ulogic;
             signal_1_V: in std_ulogic;
-            signal_DB7_N: in std_ulogic
+            signal_0_V: in std_ulogic;
+            signal_DB7_N: in std_ulogic;
+            carry_flag_C_OUT: out std_ulogic;
+            zero_flag_Z_OUT: out std_ulogic;
+            interrupt_disable_I_OUT: out std_ulogic;
+            decimal_flag_D_OUT: out std_ulogic;
+            overflow_flag_V_OUT: out std_ulogic;
+            negative_flag_N_OUT: out std_ulogic;
+            metaclock: in std_ulogic
         );
     end component;
     component program_counter_low is
@@ -400,6 +426,7 @@ begin
         );
     P_REG: status_register
         port map(
+            phi1 => phi1,
             db_bus_in => bus_DB,
             std_logic_vector(db_bus_out) => drivers_DB,
             enable_P_DB => output_enable_P_DB,
@@ -418,7 +445,15 @@ begin
             signal_DB6_V => signal_DB6_V,
             signal_AVR_V => signal_AVR_V,
             signal_1_V => signal_1_V,
-            signal_DB7_N => signal_DB7_N
+            signal_0_V => signal_0_V,
+            signal_DB7_N => signal_DB7_N,
+            carry_flag_C_OUT => carry_flag_C_OUT,
+            zero_flag_Z_OUT => zero_flag_Z_OUT,
+            interrupt_disable_I_OUT => interrupt_disable_I_OUT,
+            decimal_flag_D_OUT => decimal_flag_D_OUT,
+            overflow_flag_V_OUT => overflow_flag_V_OUT,
+            negative_flag_N_OUT => negative_flag_N_OUT,
+            metaclock => metaclock
         );
     load_ABH <= load_ADH_ABH and phi1;
     ABH_REG: index_register

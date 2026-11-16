@@ -139,8 +139,10 @@ Applies the BCD correction after an addition: ADC while the D flag
 ### `DSA` - ALU Decimal Subtract Adjust {#Ricoh2A03_DSA}
 
 Applies the BCD correction after a subtraction: SBC while the D flag is set.
-The real chip uses it active-low, as `/DSA`. The @ref mos_6502_alu doesn't
-take it yet.
+The real chip uses it active-low, as `/DSA`. Unlike `DAA`, it doesn't feed the
+adder's carry chain, only the decimal adjust adders after the adder hold
+register, so the @ref mos_6502_alu doesn't take it. Those adders aren't
+implemented yet.
 
 ### `SUMS` - ALU Summation Enable {#Ricoh2A03_ALU_SUMS}
 ### `ANDS` - ALU Logical AND Enable {#Ricoh2A03_ALU_ANDS}
@@ -197,14 +199,17 @@ random logic.
 
 ### `0/V` Clear V {#Ricoh_Signal_0_V}
 
-Clears V, for CLV (decoder line 127). The @ref random_logic_controller makes
-it, but the @ref status_register doesn't take it yet.
+Clears V, for CLV (decoder line 127).
 
 ### `DB7/N` Set N to the value of DB(7) {#Ricoh_Signal_DB7_N}
 
 The real chip loads Z, I and D from DB with one signal, `DB/P`, and C, V and N
 with their own (`DB/C`, `DB/V`, `DB/N`). The @ref random_logic_controller
 drives `DB1/Z`, `DB2/I` and `DB3/D` all from `DB/P`.
+
+The P register only loads its flags during Phi1. The load commands above stay
+high through Phi2 as well, while DB precharges, so the @ref status_register
+gates them with `phi1` itself.
 
 The P register also outputs its flags to the random logic. The real chip
 outputs them active-low (`/C_OUT` and so on). This core keeps them active-high.
