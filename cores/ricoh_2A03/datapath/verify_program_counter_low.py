@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.handle import Force
 from cocotb.triggers import FallingEdge, RisingEdge, Timer
 from cocotb.types import LogicArray
 
@@ -25,8 +24,7 @@ async def test_program_counter_low_reset(dut: "DUT"):
     dut.signal_ADL_PCL.value = 0
     
     # Set bus values to high-impedance
-    dut.bus_ADL.value = LogicArray("zzzzzzzz")
-    dut.bus_DB.value = LogicArray("zzzzzzzz")
+    dut.bus_ADL_in.value = LogicArray("zzzzzzzz")
     
     await RisingEdge(dut.phi2)
     await FallingEdge(dut.phi2)
@@ -50,8 +48,7 @@ async def test_program_counter_increment(dut: "DUT"):
     dut.signal_1_PC.value = 0
     dut.signal_PCL_PCL.value = 0
     dut.signal_ADL_PCL.value = 0
-    dut.bus_ADL.value = LogicArray("zzzzzzzz")
-    dut.bus_DB.value = LogicArray("zzzzzzzz")
+    dut.bus_ADL_in.value = LogicArray("zzzzzzzz")
     
     # First clock cycle - set up PCL_PCL to store PC value in select register
     dut.signal_PCL_PCL.value = 1
@@ -95,11 +92,10 @@ async def test_program_counter_load_from_adl(dut: "DUT"):
     dut.signal_1_PC.value = 0
     dut.signal_PCL_PCL.value = 0
     dut.signal_ADL_PCL.value = 0
-    dut.bus_ADL.value = LogicArray("zzzzzzzz")
-    dut.bus_DB.value = LogicArray("zzzzzzzz")
+    dut.bus_ADL_in.value = LogicArray("zzzzzzzz")
     
     # Load a value from ADL to PCL
-    dut.bus_ADL.value = 0x42
+    dut.bus_ADL_in.value = 0x42
     dut.signal_ADL_PCL.value = 1
     await Timer(1, unit="ns")
     
@@ -127,11 +123,10 @@ async def test_program_counter_output_to_buses(dut: "DUT"):
     dut.signal_1_PC.value = 0
     dut.signal_PCL_PCL.value = 0
     dut.signal_ADL_PCL.value = 0
-    dut.bus_ADL.value = LogicArray("zzzzzzzz")
-    dut.bus_DB.value = LogicArray("zzzzzzzz")
+    dut.bus_ADL_in.value = LogicArray("zzzzzzzz")
     
     # Load test value 0xA5 to PCL
-    dut.bus_ADL.value = 0xA5
+    dut.bus_ADL_in.value = 0xA5
     dut.signal_ADL_PCL.value = 1
     await Timer(1, unit="ns")
     
@@ -149,7 +144,7 @@ async def test_program_counter_output_to_buses(dut: "DUT"):
     dut.signal_PCL_DB.value = 0
     dut.signal_PCL_ADL.value = 1
     await Timer(1, unit="ns")
-    assert dut.bus_ADL.value == 0xA5, f"Expected ADL to be 0xA5, got {dut.bus_ADL.value}"
+    assert dut.bus_ADL_out.value == 0xA5, f"Expected ADL to be 0xA5, got {dut.bus_ADL_out.value}"
 
 @cocotb.test()
 async def test_carry_out(dut: "DUT"):
@@ -165,10 +160,9 @@ async def test_carry_out(dut: "DUT"):
     dut.signal_1_PC.value = 0
     dut.signal_PCL_PCL.value = 0
     dut.signal_ADL_PCL.value = 0
-    dut.bus_DB.value = LogicArray("zzzzzzzz")
     
     # Load 0xFF to PCL
-    dut.bus_ADL.value = Force(0xFF)
+    dut.bus_ADL_in.value = 0xFF
     await Timer(1, unit="ns")
     dut.signal_ADL_PCL.value = 1
     await Timer(1, unit="ns")

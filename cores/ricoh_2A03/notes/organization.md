@@ -24,8 +24,8 @@
     - [x] @ref accumulator
     - [~] @ref mos_6502_datapath
     - [x] Address Bus registers
-    - [ ] Stack pointer
-    - [ ] Gate and charge MOSFETs
+    - [x] @ref stack_pointer
+    - [x] @ref bus_multiplexer - precharge, open drain and pass MOSFETs
     - [x] @ref status_register
     - [x] @ref data_input_latch
     - [x] @ref data_output_latch

@@ -12,12 +12,16 @@ use ieee.std_logic_1164.all;
 
 entity logic_core is
     port(
-        --! @ref Ricoh_2A03_ADL
-        adl_bus: inout std_ulogic_vector(7 downto 0);
-        --! @ref Ricoh_2A03_SB
-        sb_bus: inout std_ulogic_vector(7 downto 0);
-        --! @ref Ricoh_2A03_DB
-        db_bus: inout std_ulogic_vector(7 downto 0);
+        --! @ref Ricoh_2A03_ADL, as resolved by @ref bus_multiplexer
+        adl_bus_in: in std_ulogic_vector(7 downto 0);
+        --! Drives @ref Ricoh_2A03_ADL (ADD/ADL), 'Z' when not enabled
+        adl_bus_out: out std_ulogic_vector(7 downto 0);
+        --! @ref Ricoh_2A03_SB, as resolved by @ref bus_multiplexer
+        sb_bus_in: in std_ulogic_vector(7 downto 0);
+        --! Drives @ref Ricoh_2A03_SB (ADD/SB), 'Z' when not enabled
+        sb_bus_out: out std_ulogic_vector(7 downto 0);
+        --! @ref Ricoh_2A03_DB, as resolved by @ref bus_multiplexer
+        db_bus_in: in std_ulogic_vector(7 downto 0);
 
         -- B register control signals
         --! @ref Ricoh_2A03_Signal_NOT_DB_ADD
@@ -134,7 +138,7 @@ architecture rtl of logic_core is
 begin
     ai0: a_input_register port map (
         load_SB_ADD => control_sb_add,
-        data_in_SB => sb_bus,
+        data_in_SB => sb_bus_in,
         clear_0_ADD => control_0_add,
         data_out => a_input_data,
         metaclock => metaclock
@@ -143,8 +147,8 @@ begin
         control_not_db_add => control_not_db_add,
         control_db_add => control_db_add,
         control_adl_add => control_adl_add,
-        data_in_db => db_bus,
-        data_in_adl => adl_bus,
+        data_in_db => db_bus_in,
+        data_in_adl => adl_bus_in,
         data_out => b_input_data,
         metaclock => metaclock
     );
@@ -168,8 +172,8 @@ begin
         data_in => alu_output,
         sb_bus_enable_ADD_SB_0_6 => control_add_sb_0_6,
         sb_bus_enable_ADD_SB_7 => control_add_sb_7,
-        sb_bus_port => sb_bus,
+        sb_bus_port => sb_bus_out,
         adl_bus_enable_ADD_ADL => control_add_adl,
-        adl_bus_port => adl_bus
+        adl_bus_port => adl_bus_out
     );
 end architecture;

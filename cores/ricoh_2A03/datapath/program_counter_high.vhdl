@@ -30,10 +30,12 @@ entity program_counter_high is
         signal_PCH_PCH  : in  std_ulogic;
         --! @ref Ricoh_2A03_Signal_ADH_PCH
         signal_ADH_PCH  : in  std_ulogic;
-        --! @ref Ricoh_2A03_ADH
-        bus_ADH         : inout std_ulogic_vector(7 downto 0);
+        --! @ref Ricoh_2A03_ADH, as resolved by @ref bus_multiplexer
+        bus_ADH_in      : in  std_ulogic_vector(7 downto 0);
+        --! Drives @ref Ricoh_2A03_ADH, 'Z' when not enabled
+        bus_ADH_out     : out std_ulogic_vector(7 downto 0);
         --! @ref Ricoh_2A03_DB
-        bus_DB          : inout std_ulogic_vector(7 downto 0);
+        bus_DB          : out std_ulogic_vector(7 downto 0);
         --! Clock to drive the select register's latch circuitry
         --! @ref metaclock
         metaclock       : in  std_ulogic
@@ -50,7 +52,7 @@ architecture rtl of program_counter_high is
     signal signal_PCHC                     : std_ulogic;
 begin
     bus_DB  <= program_counter_register when signal_PCH_DB = '1' else (others => 'Z');
-    bus_ADH <= program_counter_register when signal_PCH_ADH = '1' else (others => 'Z');
+    bus_ADH_out <= program_counter_register when signal_PCH_ADH = '1' else (others => 'Z');
 
     -- The select register holds its value while neither PCH/PCH nor ADH/PCH
     -- is asserted, so it's sampled on the metaclock rather than inferring a
@@ -61,7 +63,7 @@ begin
             if signal_PCH_PCH = '1' then
                 program_counter_select_register <= program_counter_register;
             elsif signal_ADH_PCH = '1' then
-                program_counter_select_register <= bus_ADH;
+                program_counter_select_register <= bus_ADH_in;
             end if;
         end if;
     end process;

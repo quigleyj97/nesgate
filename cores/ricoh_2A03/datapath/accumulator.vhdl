@@ -5,8 +5,10 @@ use ieee.std_logic_1164.all;
 --! @todo This does not implement the BCD correction circuitry
 entity accumulator is
     port(
-        --! @ref Ricoh_2A03_SB
-        databus_SB: inout std_ulogic_vector(7 downto 0);
+        --! @ref Ricoh_2A03_SB, as resolved by @ref bus_multiplexer
+        databus_SB_in: in std_ulogic_vector(7 downto 0);
+        --! Drives @ref Ricoh_2A03_SB, 'Z' when not enabled
+        databus_SB_out: out std_ulogic_vector(7 downto 0);
         --! @ref Ricoh_2A03_DB
         databus_DB: out std_ulogic_vector(7 downto 0);
         --! @ref Ricoh_Signal_SB_AC
@@ -21,13 +23,13 @@ end entity;
 architecture rtl of accumulator is
     signal register_data: std_ulogic_vector(7 downto 0) := (others => '0');
 begin
-    process(load_SB_AC, databus_SB)
+    process(load_SB_AC, databus_SB_in)
     begin
         if rising_edge(load_SB_AC) then
-            register_data <= databus_SB;
+            register_data <= databus_SB_in;
         end if;
     end process;
 
     databus_DB <= register_data when output_enable_AC_DB = '1' else (others => 'Z');
-    databus_SB <= register_data when output_enable_AC_SB = '1' else (others => 'Z');
+    databus_SB_out <= register_data when output_enable_AC_SB = '1' else (others => 'Z');
 end architecture;

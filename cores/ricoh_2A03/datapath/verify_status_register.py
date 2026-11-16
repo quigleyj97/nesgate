@@ -21,7 +21,7 @@ async def test_status_register_data_bus(dut: "DUT"):
     assert dut.DBZ.value == True
 
     # Test that setting DB to all ones doesn't set every single bit
-    dut.db_bus.value = 0b11111111
+    dut.db_bus_in.value = 0b11111111
     await Timer(1, unit="fs")
     assert dut.register_data.value == 0b11001111
     assert dut.DBZ.value == False
@@ -34,14 +34,14 @@ async def test_status_register_data_bus(dut: "DUT"):
     dut.signal_DB3_D.value = False
     dut.signal_DB6_V.value = False
     dut.signal_DB7_N.value = False
-    dut.db_bus.value = 0b00000000
+    dut.db_bus_in.value = 0b00000000
     await Timer(1, unit="fs")
     dut.enable_P_DB.value = True
     await Timer(1, unit="fs")
-    assert dut.db_bus.value == 0b1110_1111
-    # reset the internal register between tests
-    dut.register_data.value = 0b00000000
-    await Timer(1, unit="fs")
+    assert str(dut.db_bus_out.value) == "111Z1111", "Bit 4 isn't driven"
+    # Clear the flags between tests, by loading zeros from DB
+    dut.enable_P_DB.value = False
+    await clear_flags(dut)
 
 @cocotb.test()
 async def test_status_register_alu_flags(dut: "DUT"):
@@ -62,10 +62,10 @@ async def test_bit_5_goes_high_when_enabled(dut: "DUT"):
     set_signals_low(dut)
     dut.enable_P_DB.value = True
     await Timer(1, unit="fs")
-    assert dut.db_bus.value == 0b0010_0000
+    assert str(dut.db_bus_out.value) == "001Z0000", "Bit 4 isn't driven"
     dut.enable_P_DB.value = False
     await Timer(1, unit="fs")
-    assert not dut.db_bus.value.is_resolvable
+    assert not dut.db_bus_out.value.is_resolvable
 
 @cocotb.test()
 async def test_status_register_ir5(dut: "DUT"):
@@ -98,4 +98,16 @@ def set_signals_low(dut: "DUT"):
     dut.signal_ACR.value = False
     dut.signal_AVR.value = False
     dut.enable_P_DB.value = False
-    dut.db_bus.value = 0b00000000
+    dut.db_bus_in.value = 0b00000000
+
+
+async def clear_flags(dut: "DUT"):
+    """Load every flag from DB while DB is zero."""
+    dut.db_bus_in.value = 0
+    for name in ["signal_DB0_C", "signal_DB1_Z", "signal_DB2_I", "signal_DB3_D", "signal_DB6_V", "signal_DB7_N"]:
+        getattr(dut, name).value = True
+    await Timer(1, unit="fs")
+    for name in ["signal_DB0_C", "signal_DB1_Z", "signal_DB2_I", "signal_DB3_D", "signal_DB6_V", "signal_DB7_N"]:
+        getattr(dut, name).value = False
+    await Timer(1, unit="fs")
+    assert dut.register_data.value == 0

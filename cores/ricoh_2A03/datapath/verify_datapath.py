@@ -11,6 +11,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.handle import Force, Release
 from cocotb.triggers import Timer
+from cocotb.types import LogicArray
 
 if TYPE_CHECKING:
     from mos_6502_datapath import Mos6502Datapath as DUT
@@ -18,6 +19,13 @@ if TYPE_CHECKING:
 CONTROL_SIGNALS = [
     "phi1",
     "phi2",
+    "connect_SB_DB",
+    "connect_SB_ADH",
+    "clear_0_ADL0",
+    "clear_0_ADL1",
+    "clear_0_ADL2",
+    "clear_0_ADH0",
+    "clear_0_ADH_1_7",
     "load_SB_AC",
     "output_enable_AC_SB",
     "output_enable_AC_DB",
@@ -25,6 +33,9 @@ CONTROL_SIGNALS = [
     "output_enable_X_SB",
     "load_SB_Y",
     "output_enable_Y_SB",
+    "load_SB_S",
+    "output_enable_S_SB",
+    "output_enable_S_ADL",
     "load_ADH_ABH",
     "load_ADL_ABL",
     "load_PCL_PCL",
@@ -60,6 +71,8 @@ CONTROL_SIGNALS = [
 ]
 
 BUSES = ["databus_SB", "databus_DB", "databus_ADH", "databus_ADL"]
+DRIVERS = ["drive_SB", "drive_DB", "drive_ADH", "drive_ADL"]
+UNDRIVEN = LogicArray("ZZZZZZZZ")
 
 
 async def reset(dut: "DUT"):
@@ -69,8 +82,8 @@ async def reset(dut: "DUT"):
         getattr(dut, name).value = 0
     # Read mode, so the data output latch doesn't drive the data pins
     dut.signal_R_NOT_W.value = 1
-    for name in BUSES:
-        getattr(dut, name).value = Release()
+    for name in DRIVERS:
+        getattr(dut, name).value = UNDRIVEN
     await Timer(1, unit="ns")
 
 
@@ -112,16 +125,16 @@ async def read_pc(dut: "DUT") -> tuple[int, int]:
 
 async def load_pc(dut: "DUT", value: int):
     """Load the program counter from ADH/ADL during phi1, and latch it on phi2."""
-    dut.databus_ADH.value = Force(value >> 8)
-    dut.databus_ADL.value = Force(value & 0xFF)
+    dut.drive_ADH.value = value >> 8
+    dut.drive_ADL.value = value & 0xFF
     dut.load_ADH_PCH.value = 1
     dut.load_ADL_PCL.value = 1
     await Timer(1, unit="ns")
     await phase(dut.phi1)
     dut.load_ADH_PCH.value = 0
     dut.load_ADL_PCL.value = 0
-    dut.databus_ADH.value = Release()
-    dut.databus_ADL.value = Release()
+    dut.drive_ADH.value = UNDRIVEN
+    dut.drive_ADL.value = UNDRIVEN
     await phase(dut.phi2)
 
 
@@ -139,19 +152,20 @@ async def increment_pc(dut: "DUT"):
 
 async def load_from_sb(dut: "DUT", load, value: int):
     """Drive SB from outside the core, and pulse a register's load signal."""
-    dut.databus_SB.value = Force(value)
+    dut.drive_SB.value = value
     await Timer(1, unit="ns")
     await pulse(load)
-    dut.databus_SB.value = Release()
+    dut.drive_SB.value = UNDRIVEN
     await Timer(1, unit="ns")
 
 
 @cocotb.test()
-async def test_buses_float_when_idle(dut: "DUT"):
-    """With nothing enabled, no subunit drives any of the internal buses."""
+async def test_buses_precharged_when_idle(dut: "DUT"):
+    """With nothing enabled, no subunit drives the internal buses, so they read
+    as precharged (all ones)."""
     await reset(dut)
     for name in BUSES:
-        assert not getattr(dut, name).value.is_resolvable, f"{name} should be open"
+        assert getattr(dut, name).value == 0xFF, f"{name} should be precharged"
 
 
 @cocotb.test()
@@ -172,7 +186,7 @@ async def test_registers_share_sb(dut: "DUT"):
         assert dut.databus_SB.value == expected, f"SB should be {expected:#04x}, got {dut.databus_SB.value}"
         enable.value = 0
         await Timer(1, unit="ns")
-        assert not dut.databus_SB.value.is_resolvable, "SB should be open again"
+        assert dut.databus_SB.value == 0xFF, "SB should be precharged again"
 
 
 @cocotb.test()
@@ -189,22 +203,22 @@ async def test_accumulator_to_db(dut: "DUT"):
 async def test_address_registers(dut: "DUT"):
     """ABH and ABL load from ADH and ADL during phi1, and drive the address pins."""
     await reset(dut)
-    dut.databus_ADH.value = Force(0x12)
-    dut.databus_ADL.value = Force(0x34)
+    dut.drive_ADH.value = 0x12
+    dut.drive_ADL.value = 0x34
     dut.load_ADH_ABH.value = 1
     dut.load_ADL_ABL.value = 1
     await Timer(1, unit="ns")
     await pulse(dut.phi1)
     dut.load_ADH_ABH.value = 0
     dut.load_ADL_ABL.value = 0
-    dut.databus_ADH.value = Release()
-    dut.databus_ADL.value = Release()
+    dut.drive_ADH.value = UNDRIVEN
+    dut.drive_ADL.value = UNDRIVEN
     await Timer(1, unit="ns")
     assert dut.address.value == 0x1234, f"Expected address 0x1234, got {dut.address.value}"
 
     # The address registers hold their value without a phi1 load
-    dut.databus_ADH.value = Force(0xFF)
-    dut.databus_ADL.value = Force(0xFF)
+    dut.drive_ADH.value = 0xFF
+    dut.drive_ADL.value = 0xFF
     await pulse(dut.phi1)
     assert dut.address.value == 0x1234, "Address registers should not load without ADH/ABH and ADL/ABL"
 
@@ -226,7 +240,7 @@ async def test_data_input_latch(dut: "DUT"):
     dut.output_enable_DL_ADL.value = 1
     await Timer(1, unit="ns")
     assert dut.databus_ADL.value == 0x77
-    assert not dut.databus_DB.value.is_resolvable, "DB should be open again"
+    assert dut.databus_DB.value == 0xFF, "DB should be precharged again"
 
 
 @cocotb.test()
@@ -256,15 +270,110 @@ async def test_program_counter_loads_only_on_phi1(dut: "DUT"):
     await reset(dut)
     await load_pc(dut, 0x1234)
 
-    dut.databus_ADH.value = Force(0x66)
-    dut.databus_ADL.value = Force(0x55)
+    dut.drive_ADH.value = 0x66
+    dut.drive_ADL.value = 0x55
     dut.load_ADH_PCH.value = 1
     dut.load_ADL_PCL.value = 1
     await phase(dut.phi2)
     dut.load_ADH_PCH.value = 0
     dut.load_ADL_PCL.value = 0
-    dut.databus_ADH.value = Release()
-    dut.databus_ADL.value = Release()
+    dut.drive_ADH.value = UNDRIVEN
+    dut.drive_ADL.value = UNDRIVEN
     await Timer(1, unit="ns")
 
     assert await read_pc(dut) == (0x1234, 0x1234), "PC should not load from ADH/ADL during phi2"
+
+
+@cocotb.test()
+async def test_stack_pointer(dut: "DUT"):
+    """S loads from SB, and drives SB and ADL."""
+    await reset(dut)
+    dut.drive_SB.value = 0xFD
+    dut.load_SB_S.value = 1
+    await Timer(4, unit="ns")  # long enough for the metaclock to sample it
+    dut.load_SB_S.value = 0
+    dut.drive_SB.value = UNDRIVEN
+    await Timer(1, unit="ns")
+    assert dut.databus_SB.value == 0xFF, "SB should be precharged again"
+
+    dut.output_enable_S_ADL.value = 1
+    await Timer(1, unit="ns")
+    assert dut.databus_ADL.value == 0xFD
+    dut.output_enable_S_ADL.value = 0
+    dut.output_enable_S_SB.value = 1
+    await Timer(1, unit="ns")
+    assert dut.databus_SB.value == 0xFD
+
+
+@cocotb.test()
+async def test_pass_mosfets(dut: "DUT"):
+    """SB/DB and SB/ADH carry a register's value from SB to DB and ADH, and
+    release them once the register stops driving SB."""
+    await reset(dut)
+    await load_from_sb(dut, dut.load_SB_X, 0x42)
+
+    dut.output_enable_X_SB.value = 1
+    dut.connect_SB_DB.value = 1
+    await Timer(1, unit="ns")
+    assert dut.databus_DB.value == 0x42, f"DB should see X through SB/DB, got {dut.databus_DB.value}"
+    assert dut.databus_ADH.value == 0xFF, "ADH isn't connected"
+
+    dut.connect_SB_ADH.value = 1
+    await Timer(1, unit="ns")
+    assert dut.databus_ADH.value == 0x42, f"ADH should see X through SB/ADH, got {dut.databus_ADH.value}"
+
+    dut.output_enable_X_SB.value = 0
+    await Timer(1, unit="ns")
+    for name in BUSES[:3]:
+        assert getattr(dut, name).value == 0xFF, f"{name} should be precharged once X releases SB"
+
+    # The pass MOSFETs are bidirectional: the data latch drives DB, and X
+    # loads it from SB
+    dut.data.value = Force(0x99)
+    await Timer(1, unit="ns")
+    await pulse(dut.phi2)
+    dut.data.value = Release()
+    dut.connect_SB_ADH.value = 0
+    dut.output_enable_DL_DB.value = 1
+    await Timer(1, unit="ns")
+    assert dut.databus_SB.value == 0x99
+    await pulse(dut.load_SB_X)
+    dut.output_enable_DL_DB.value = 0
+    dut.connect_SB_DB.value = 0
+    dut.output_enable_X_SB.value = 1
+    await Timer(1, unit="ns")
+    assert dut.databus_SB.value == 0x99
+
+
+@cocotb.test()
+async def test_reset_vector_address(dut: "DUT"):
+    """With ADH precharged and 0/ADL0, 0/ADL1 pulling ADL low, the address
+    registers load the reset vector, 0xFFFC."""
+    await reset(dut)
+    dut.clear_0_ADL0.value = 1
+    dut.clear_0_ADL1.value = 1
+    dut.load_ADH_ABH.value = 1
+    dut.load_ADL_ABL.value = 1
+    await Timer(1, unit="ns")
+    await pulse(dut.phi1)
+    assert dut.address.value == 0xFFFC, f"Expected address 0xFFFC, got {dut.address.value}"
+
+
+@cocotb.test()
+async def test_zero_page_address(dut: "DUT"):
+    """0/ADH0 and 0/ADH(1-7) pull ADH to zero while the data latch drives ADL,
+    addressing the zero page."""
+    await reset(dut)
+    dut.data.value = Force(0x34)
+    await Timer(1, unit="ns")
+    await pulse(dut.phi2)
+    dut.data.value = Release()
+
+    dut.output_enable_DL_ADL.value = 1
+    dut.clear_0_ADH0.value = 1
+    dut.clear_0_ADH_1_7.value = 1
+    dut.load_ADH_ABH.value = 1
+    dut.load_ADL_ABL.value = 1
+    await Timer(1, unit="ns")
+    await pulse(dut.phi1)
+    assert dut.address.value == 0x0034, f"Expected address 0x0034, got {dut.address.value}"

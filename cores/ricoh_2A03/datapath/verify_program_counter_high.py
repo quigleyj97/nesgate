@@ -2,8 +2,8 @@ from typing import TYPE_CHECKING
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.handle import Force, Release
 from cocotb.triggers import FallingEdge, RisingEdge, Timer
+from cocotb.types import LogicArray
 
 if TYPE_CHECKING:
     from program_counter_high import ProgramCounterHigh as DUT
@@ -18,20 +18,19 @@ async def setup(dut: "DUT"):
     dut.signal_PCLC.value = 0
     dut.signal_PCH_PCH.value = 0
     dut.signal_ADH_PCH.value = 0
-    dut.bus_ADH.value = Release()
-    dut.bus_DB.value = Release()
+    dut.bus_ADH_in.value = LogicArray("ZZZZZZZZ")
     await Timer(1, unit="ns")
 
 
 async def load_from_adh(dut: "DUT", value: int):
     """Load PCHS from ADH, and latch it into PCH on the next phi2."""
     await FallingEdge(dut.phi2)
-    dut.bus_ADH.value = Force(value)
+    dut.bus_ADH_in.value = value
     dut.signal_ADH_PCH.value = 1
     await RisingEdge(dut.phi2)
     await FallingEdge(dut.phi2)
     dut.signal_ADH_PCH.value = 0
-    dut.bus_ADH.value = Release()
+    dut.bus_ADH_in.value = LogicArray("ZZZZZZZZ")
     await Timer(1, unit="ns")
 
 
@@ -62,7 +61,7 @@ async def test_reset(dut: "DUT"):
     await RisingEdge(dut.phi2)
     await FallingEdge(dut.phi2)
     assert not dut.bus_DB.value.is_resolvable, "DB should be open"
-    assert not dut.bus_ADH.value.is_resolvable, "ADH should be open"
+    assert not dut.bus_ADH_out.value.is_resolvable, "ADH should be open"
     assert await read_db(dut) == 0
 
 
@@ -75,7 +74,7 @@ async def test_load_from_adh(dut: "DUT"):
 
     dut.signal_PCH_ADH.value = 1
     await Timer(1, unit="ns")
-    assert dut.bus_ADH.value == 0xA5, f"Expected ADH to be 0xA5, got {dut.bus_ADH.value}"
+    assert dut.bus_ADH_out.value == 0xA5, f"Expected ADH to be 0xA5, got {dut.bus_ADH_out.value}"
     assert not dut.bus_DB.value.is_resolvable, "DB should be open"
 
 

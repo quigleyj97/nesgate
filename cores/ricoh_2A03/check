@@ -17,12 +17,9 @@ ENTITIES=(
     data_output_latch
     status_register
     stack_pointer
-    precharge_mosfets
-    adh_open_drain_mosfet
-    adl_open_drain_mosfet
-    pass_mosfet
     program_counter_low
     program_counter_high
+    bus_multiplexer
     mos_6502_datapath
     predecode_register
     predecode_logic

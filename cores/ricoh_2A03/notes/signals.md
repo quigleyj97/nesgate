@@ -12,18 +12,38 @@ with a few signals that don't come from the decoder.
 ### `DL/ADL` Data Input Latch ADL Bus Output Enable {#Ricoh_2A03_Signal_DL_ADL}
 ### `DL/ADH` Data Input Latch ADH Bus Output Enable {#Ricoh_2A03_Signal_DL_ADH}
 
-## Uncategorized
+## Address bus register signals
 
-### `0/ADH0` {#Ricoh_2A03_Signal_0_ADH0}
-### `0/ADH(1-7)` {#Ricoh_2A03_Signal_0_ADH_1_7}
-### `ADH/ABH` {#Ricoh_2A03_Signal_ADH_ABH}
-### `ADL/ABL` {#Ricoh_2A03_Signal_ADL_ABL}
+### `ADH/ABH` Load ABH from ADH bus {#Ricoh_2A03_Signal_ADH_ABH}
+### `ADL/ABL` Load ABL from ADL bus {#Ricoh_2A03_Signal_ADL_ABL}
 
-### `SB/ADH` {#Ricoh_2A03_Signal_SB_ADH}
-### `SB/DB` {#Ricoh_2A03_Signal_SB_DB}
-### `0/ADL0` {#Ricoh_2A03_Signal_0_ADL0}
-### `0/ADL1` {#Ricoh_2A03_Signal_0_ADL1}
-### `0/ADL2` {#Ricoh_2A03_Signal_0_ADL2}
+## Bus multiplexer signals
+
+These control the open drain and pass MOSFETs, which @ref bus_multiplexer
+models along with the precharge.
+
+### `SB/DB` Join SB and DB buses {#Ricoh_2A03_Signal_SB_DB}
+
+Turns on the pass MOSFETs between SB and DB, so they act as a single bus.
+Either side can drive it.
+
+### `SB/ADH` Join SB and ADH buses {#Ricoh_2A03_Signal_SB_ADH}
+
+Turns on the pass MOSFETs between SB and ADH, so they act as a single bus.
+Either side can drive it.
+
+### `0/ADL0` Pull ADL bit 0 low {#Ricoh_2A03_Signal_0_ADL0}
+### `0/ADL1` Pull ADL bit 1 low {#Ricoh_2A03_Signal_0_ADL1}
+### `0/ADL2` Pull ADL bit 2 low {#Ricoh_2A03_Signal_0_ADL2}
+
+Together with the precharge, these form the low byte of the interrupt vectors:
+`0xFA` (NMI), `0xFC` (reset) and `0xFE` (IRQ/BRK).
+
+### `0/ADH0` Pull ADH bit 0 low {#Ricoh_2A03_Signal_0_ADH0}
+### `0/ADH(1-7)` Pull ADH bits 1-7 low {#Ricoh_2A03_Signal_0_ADH_1_7}
+
+Together, these address the zero page (`0x00`). `0/ADH(1-7)` alone addresses
+the stack page (`0x01`).
 
 ## Program counter signals
 

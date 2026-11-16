@@ -5,8 +5,10 @@ use ieee.std_logic_1164.all;
 --! @ref MOS_6502_P_Register
 entity status_register is
     port(
-        --! @ref Ricoh_2A03_DB
-        db_bus: inout std_ulogic_vector(7 downto 0);
+        --! @ref Ricoh_2A03_DB, as resolved by @ref bus_multiplexer
+        db_bus_in: in std_ulogic_vector(7 downto 0);
+        --! Drives @ref Ricoh_2A03_DB, 'Z' when not enabled
+        db_bus_out: out std_ulogic_vector(7 downto 0);
         --! @ref Ricoh_2A03_Signal_P_DB
         enable_P_DB: in std_ulogic;
         --! @ref Ricoh_2A03_Signal_IR5
@@ -49,29 +51,29 @@ architecture rtl of status_register is
     signal register_data: std_ulogic_vector(7 downto 0) := (others => '0');
 begin
     DBZ <= not (
-        db_bus(1) and
-        db_bus(2) and
-        db_bus(3) and
-        db_bus(4) and
-        db_bus(5) and
-        db_bus(6) and
-        db_bus(7)
+        db_bus_in(1) and
+        db_bus_in(2) and
+        db_bus_in(3) and
+        db_bus_in(4) and
+        db_bus_in(5) and
+        db_bus_in(6) and
+        db_bus_in(7)
     );
     -- Bit 4 is straight up not wired to the DB bus at all, and 5 is hardwired as 1
-    db_bus(7 downto 6) <= register_data(7 downto 6) when enable_P_DB = '1' else (others => 'Z');
-    db_bus(5) <= '1' when enable_P_DB = '1' else 'Z';
+    db_bus_out(7 downto 6) <= register_data(7 downto 6) when enable_P_DB = '1' else (others => 'Z');
+    db_bus_out(5) <= '1' when enable_P_DB = '1' else 'Z';
     -- Bit 4 still needs an explicit 'Z' driver, or it defaults to 'U' and
     -- clobbers whatever else is driving DB(4)
-    db_bus(4) <= 'Z';
-    db_bus(3 downto 0) <= register_data(3 downto 0) when enable_P_DB = '1' else (others => 'Z');
+    db_bus_out(4) <= 'Z';
+    db_bus_out(3 downto 0) <= register_data(3 downto 0) when enable_P_DB = '1' else (others => 'Z');
 
-    process(signal_DB0_C, signal_IR5_C, signal_ACR_C, db_bus(0), signal_ACR, signal_IR5)
+    process(signal_DB0_C, signal_IR5_C, signal_ACR_C, db_bus_in(0), signal_ACR, signal_IR5)
         variable sensitivity: std_ulogic_vector(2 downto 0);
     begin
         sensitivity := signal_DB0_C & signal_IR5_C & signal_ACR_C;
         case sensitivity is
             when "100" =>
-                register_data(0) <= db_bus(0);
+                register_data(0) <= db_bus_in(0);
             when "010" =>
                 register_data(0) <= signal_IR5;
             when "001" =>
@@ -81,13 +83,13 @@ begin
         end case;
     end process;
 
-    process(signal_DB1_Z, signal_DBZ_Z, db_bus(1), DBZ)
+    process(signal_DB1_Z, signal_DBZ_Z, db_bus_in(1), DBZ)
         variable sensitivity: std_ulogic_vector(1 downto 0);
     begin
         sensitivity := signal_DB1_Z & signal_DBZ_Z;
         case sensitivity is
             when "10" =>
-                register_data(1) <= db_bus(1);
+                register_data(1) <= db_bus_in(1);
             when "01" =>
                 register_data(1) <= DBZ;
             when others =>
@@ -95,13 +97,13 @@ begin
         end case;
     end process;
 
-    process(signal_DB2_I, signal_IR5_I, db_bus(2), signal_IR5)
+    process(signal_DB2_I, signal_IR5_I, db_bus_in(2), signal_IR5)
         variable sensitivity: std_ulogic_vector(1 downto 0);
     begin
         sensitivity := signal_DB2_I & signal_IR5_I;
         case sensitivity is
             when "10" =>
-                register_data(2) <= db_bus(2);
+                register_data(2) <= db_bus_in(2);
             when "01" =>
                 register_data(2) <= signal_IR5;
             when others =>
@@ -109,13 +111,13 @@ begin
         end case;
     end process;
 
-    process(signal_DB3_D, signal_IR5_D, db_bus(3), signal_IR5)
+    process(signal_DB3_D, signal_IR5_D, db_bus_in(3), signal_IR5)
         variable sensitivity: std_ulogic_vector(1 downto 0);
     begin
         sensitivity := signal_DB3_D & signal_IR5_D;
         case sensitivity is
             when "10" =>
-                register_data(3) <= db_bus(3);
+                register_data(3) <= db_bus_in(3);
             when "01" =>
                 register_data(3) <= signal_IR5;
             when others =>
@@ -123,13 +125,13 @@ begin
         end case;
     end process;
 
-    process(signal_DB6_V, signal_AVR_V, signal_1_V, db_bus(6), signal_AVR, signal_1_V)
+    process(signal_DB6_V, signal_AVR_V, signal_1_V, db_bus_in(6), signal_AVR, signal_1_V)
         variable sensitivity: std_ulogic_vector(2 downto 0);
     begin
         sensitivity := signal_DB6_V & signal_AVR_V & signal_1_V;
         case sensitivity is
             when "100" =>
-                register_data(6) <= db_bus(6);
+                register_data(6) <= db_bus_in(6);
             when "010" =>
                 register_data(6) <= signal_AVR;
             when "001" =>
@@ -139,11 +141,11 @@ begin
         end case;
     end process;
 
-    process(signal_DB7_N, db_bus(7))
+    process(signal_DB7_N, db_bus_in(7))
     begin
         case (signal_DB7_N) is
             when '1' =>
-                register_data(7) <= db_bus(7);
+                register_data(7) <= db_bus_in(7);
             when others =>
                 register_data(7) <= register_data(7);
         end case;
