@@ -5,7 +5,15 @@
 --! core to minimize the possibility of signal wiring mistakes in higher level
 --! designs, and ideally will be optimized out at synthesis time as there's
 --! no real logic in this core itself. All actual logic is implemented in the
---! components that this core references.
+--! components that this core references, except for the ACR and AVR latches.
+--!
+--! On the real chip, the ALU's carry and overflow outputs are latched during
+--! Phi2, along with the result in the adder hold register. The random logic
+--! and the status register read them during the next Phi1, while the A and B
+--! input registers are already loading the next operands, so the combinational
+--! outputs of @ref mos_6502_alu would have changed by then. The latches are
+--! sampled on the @ref metaclock while Phi2 is high, like the rest of the
+--! core's latches.
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -54,9 +62,9 @@ entity logic_core is
         control_srs: in std_ulogic;
 
         -- ALU output signals
-        --! @ref Ricoh2A03_ALU_AVR
+        --! @ref Ricoh2A03_ALU_AVR, latched during Phi2
         signal_avr: out std_ulogic;
-        --! @ref Ricoh2A03_ALU_ACR
+        --! @ref Ricoh2A03_ALU_ACR, latched during Phi2
         signal_carry: out std_ulogic;
         --! @ref Ricoh2A03_ALU_HC
         signal_hc: out std_ulogic;
@@ -130,6 +138,12 @@ architecture rtl of logic_core is
     signal a_input_data: std_ulogic_vector(7 downto 0) := (others => '0');
     signal b_input_data: std_ulogic_vector(7 downto 0) := (others => '0');
     signal alu_output: std_ulogic_vector(7 downto 0) := (others => '0');
+    signal alu_carry: std_ulogic;
+    signal alu_overflow: std_ulogic;
+    --! The ACR latch (Phi2)
+    signal acr_latch: std_ulogic := '0';
+    --! The AVR latch (Phi2)
+    signal avr_latch: std_ulogic := '0';
 
     for alu0: mos_6502_alu use entity work.mos_6502_alu;
     for add0: adder_hold_register use entity work.adder_hold_register;
@@ -156,8 +170,8 @@ begin
         a => a_input_data,
         b => b_input_data,
         result => alu_output,
-        carry_out_ACR => signal_carry,
-        overflow_AVR => signal_avr,
+        carry_out_ACR => alu_carry,
+        overflow_AVR => alu_overflow,
         half_carry_HC => signal_hc,
         decimal_enable_DAA => control_daa,
         carry_in_IADDC => control_i_addc,
@@ -176,4 +190,16 @@ begin
         adl_bus_enable_ADD_ADL => control_add_adl,
         adl_bus_port => adl_bus_out
     );
+
+    process(metaclock)
+    begin
+        if rising_edge(metaclock) then
+            if phi2 = '1' then
+                acr_latch <= alu_carry;
+                avr_latch <= alu_overflow;
+            end if;
+        end if;
+    end process;
+    signal_carry <= acr_latch;
+    signal_avr <= avr_latch;
 end architecture;

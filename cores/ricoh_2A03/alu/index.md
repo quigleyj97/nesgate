@@ -36,7 +36,11 @@ bus.
 
 This signal maps to the Carry flag set on the status register, and is routed
 there as well as used in a few other places (eg, to handle fixing the byte
-read when using a 3-byte addressing mode when a page cross happens) 
+read when using a 3-byte addressing mode when a page cross happens).
+
+Like `AVR`, it's latched during Phi2, along with the adder hold register, so
+it holds the carry of the last operation while the A and B input registers
+load the next one during Phi1. @ref logic_core holds the latches.
 
 #### `AVR` - ALU Overflow {#Ricoh2A03_ALU_AVR}
 

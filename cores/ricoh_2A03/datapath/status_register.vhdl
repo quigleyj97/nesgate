@@ -19,6 +19,16 @@ use ieee.std_logic_1164.all;
 --!
 --! The flags are also output to the random logic and the interrupt controller
 --! (`*_OUT`), active-high, unlike the real chip.
+--!
+--! There's no B flag in the register. When P is pushed (`P/DB`), bit 4 comes
+--! from @ref Ricoh_2A03_Signal_B_OUT instead, so BRK and PHP push it set, and
+--! a hardware interrupt pushes it clear. Bit 5 is always pushed set.
+--!
+--! @ref Ricoh_2A03_Signal_BRK6E, at the end of the BRK sequence, sets I. On the
+--! real chip it forces `I_OUT` high, and the I latch is refreshed from
+--! `I_OUT`, so I reads as set right away, and stays set once BRK6E ends. Here,
+--! I reads as set during BRK6E, and loads a 1 during the Phi1 it covers, unless
+--! `DB2/I` or `IR5/I` loads it instead.
 
 --! Processor status register (P) for the 6502
 --! @ref MOS_6502_P_Register
@@ -66,6 +76,10 @@ entity status_register is
         signal_0_V: in std_ulogic;
         --! @ref Ricoh_Signal_DB7_N
         signal_DB7_N: in std_ulogic;
+        --! @ref Ricoh_2A03_Signal_BRK6E, which sets I
+        brk_cycle_6_end_BRK6E: in std_ulogic;
+        --! @ref Ricoh_2A03_Signal_B_OUT, pushed as bit 4
+        break_flag_B_OUT: in std_ulogic;
         --! @ref Ricoh_2A03_Signal_C_OUT
         carry_flag_C_OUT: out std_ulogic;
         --! @ref Ricoh_2A03_Signal_Z_OUT
@@ -99,17 +113,16 @@ begin
         db_bus_in(6) or
         db_bus_in(7)
     );
-    -- Bit 4 is straight up not wired to the DB bus at all, and 5 is hardwired as 1
-    db_bus_out(7 downto 6) <= register_data(7 downto 6) when enable_P_DB = '1' else (others => 'Z');
-    db_bus_out(5) <= '1' when enable_P_DB = '1' else 'Z';
-    -- Bit 4 still needs an explicit 'Z' driver, or it defaults to 'U' and
-    -- clobbers whatever else is driving DB(4)
-    db_bus_out(4) <= 'Z';
-    db_bus_out(3 downto 0) <= register_data(3 downto 0) when enable_P_DB = '1' else (others => 'Z');
+    -- Bit 4 is the B flag from the interrupt logic, and bit 5 is hardwired as
+    -- 1. This is one assignment of the whole vector, so that synthesis sees one
+    -- 8-bit tri-state driver: yosys only merges the tri-state drivers of a bus
+    -- that drive the same bits, and turns the rest into plain connections.
+    db_bus_out <= register_data(7 downto 6) & '1' & break_flag_B_OUT & register_data(3 downto 0)
+        when enable_P_DB = '1' else (others => 'Z');
 
     carry_flag_C_OUT <= register_data(0);
     zero_flag_Z_OUT <= register_data(1);
-    interrupt_disable_I_OUT <= register_data(2);
+    interrupt_disable_I_OUT <= register_data(2) or brk_cycle_6_end_BRK6E;
     decimal_flag_D_OUT <= register_data(3);
     overflow_flag_V_OUT <= register_data(6);
     negative_flag_N_OUT <= register_data(7);
@@ -141,7 +154,10 @@ begin
             case select_I is
                 when "10" => register_data(2) <= db_bus_in(2);
                 when "01" => register_data(2) <= signal_IR5;
-                when others => null;
+                when others =>
+                    if brk_cycle_6_end_BRK6E = '1' then
+                        register_data(2) <= '1';
+                    end if;
             end case;
 
             select_D := signal_DB3_D & signal_IR5_D;

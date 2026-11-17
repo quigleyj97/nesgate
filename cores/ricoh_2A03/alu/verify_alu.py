@@ -109,3 +109,25 @@ async def verify_alu_overflow(dut: "DUT"):
 
     assert dut.result.value == 0x80, "ALU failed to add 255 + 1"
     assert dut.overflow_AVR.value == True, "ALU failed to set overflow bit"
+
+
+@cocotb.test
+async def verify_alu_shifts_a_and_b(dut: "DUT"):
+    """SRS shifts A AND B right, since the shifter reuses the AND gates. A
+    shift of one operand has the other input precharged to all ones."""
+    dut.carry_in_IADDC.value = False
+    dut.enable_sum_SUMS.value = False
+    dut.enable_xor_EORS.value = False
+    dut.enable_and_ANDS.value = False
+    dut.enable_or_ORS.value = False
+    dut.enable_right_shift_SRS.value = True
+
+    for a, b, expected in [
+        (0xFF, 0x02, 0x01),
+        (0x81, 0xFF, 0x40),
+        (0xF0, 0x3C, 0x18),
+    ]:
+        dut.a.value = a
+        dut.b.value = b
+        await Timer(1, unit="fs")
+        assert dut.result.value == expected, f"{a:#04x} AND {b:#04x} >> 1 should be {expected:#04x}"

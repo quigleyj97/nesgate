@@ -1,6 +1,15 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
+--! Data output register (DOR) for the Ricoh 2A03, driving the data pins
+--! @details The DOR is open during Phi1, and keeps the value DB settles to by
+--! the end of it. During Phi2 of a write cycle (`R/W` low), the data bus
+--! tristate buffers drive it onto the D0-D7 pins. Otherwise the pins are
+--! released, so memory can drive them.
+--!
+--! FPGA fabric can't synthesize a level-sensitive latch cleanly, so Phi1 is
+--! sampled on the @ref metaclock instead, and the register follows DB one
+--! metaclock behind while it's high.
 entity data_output_latch is
     port(
         --! @ref Ricoh_2A03_Phi1
@@ -12,29 +21,28 @@ entity data_output_latch is
         --! Data input, connected to the DB bus
         --! @ref Ricoh_2A03_DB
         data_in: in std_ulogic_vector(7 downto 0);
-        --! Data output, connected to the D0-D7 pins
-        data_out: out std_ulogic_vector(7 downto 0)
+        --! Data output, connected to the D0-D7 pins. 'Z' unless writing
+        --! during Phi2.
+        data_out: out std_ulogic_vector(7 downto 0);
+        --! Clock to drive the latch circuitry
+        --! @ref metaclock
+        metaclock: in std_ulogic
     );
 end entity;
 
 architecture rtl of data_output_latch is
     signal register_data: std_ulogic_vector(7 downto 0) := (others => '0');
 begin
-    process(phi1, data_in)
+    process(metaclock)
     begin
-        if rising_edge(phi1) then
-            register_data <= data_in;
-        end if;
-    end process;
-
-    process(phi2)
-    begin
-        if rising_edge(phi2) then
-            if signal_R_NOT_W = '0' then
-                data_out <= register_data;
-            else
-                data_out <= (others => 'Z');
+        if rising_edge(metaclock) then
+            if phi1 = '1' then
+                register_data <= data_in;
             end if;
         end if;
     end process;
+
+    -- The data bus tristate buffers are enabled by R/W and Phi2
+    data_out <= register_data when signal_R_NOT_W = '0' and phi2 = '1'
+        else (others => 'Z');
 end architecture;

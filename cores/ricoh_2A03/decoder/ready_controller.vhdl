@@ -16,8 +16,9 @@ use ieee.std_logic_1164.all;
 --!   and 100), or a read-modify-write cycle (@ref Ricoh_2A03_Signal_T6 and
 --!   @ref Ricoh_2A03_Signal_T7).
 --! - `WR` is the write latch while the CPU is ready, except during reset
---!   (@ref Ricoh_2A03_Signal_DORES). It goes to the R/W pin, which latches it
---!   during Phi1.
+--!   (@ref Ricoh_2A03_Signal_DORES).
+--! - The R/W pin latch (Phi1) holds `WR`, inverted, for the whole cycle, as
+--!   @ref Ricoh_Signal_R_NOT_W.
 --! - The ready latch (Phi2) is `RDY`, or `WR` from the last Phi1.
 --!
 --! It also makes two delayed copies of the ready state:
@@ -63,6 +64,8 @@ entity ready_controller is
         ready: out std_ulogic;
         --! @ref Ricoh_2A03_Signal_WR
         write_cycle_WR: out std_ulogic;
+        --! @ref Ricoh_Signal_R_NOT_W, the R/W pin
+        read_not_write_R_NOT_W: out std_ulogic;
         --! @ref Ricoh_2A03_Signal_ReadyPhi1
         ready_phi1_ReadyPhi1: out std_ulogic;
         --! @ref Ricoh_2A03_Signal_PRDY
@@ -88,6 +91,8 @@ architecture rtl of ready_controller is
     signal prdy_latch1: std_ulogic := '1';
     --! `prdy_latch2` (Phi1): the `RDY` pin from Phi2, which is `PRDY`
     signal prdy_latch2: std_ulogic := '1';
+    --! The R/W pin latch (Phi1): `WR`, inverted
+    signal rw_latch: std_ulogic := '1';
 
     signal WR: std_ulogic;
 begin
@@ -98,6 +103,7 @@ begin
         if rising_edge(metaclock) then
             if phi1 = '1' then
                 write_phi1_latch <= WR;
+                rw_latch <= not WR;
                 ready_delay_latch1 <= ready_latch;
                 prdy_latch2 <= prdy_latch1;
             end if;
@@ -114,6 +120,7 @@ begin
 
     ready <= ready_latch;
     write_cycle_WR <= WR;
+    read_not_write_R_NOT_W <= rw_latch;
     ready_phi1_ReadyPhi1 <= ready_delay_latch2;
     previous_ready_PRDY <= prdy_latch2;
 end architecture rtl;

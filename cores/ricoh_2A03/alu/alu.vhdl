@@ -68,6 +68,13 @@ architecture rtl of mos_6502_alu is
     signal a_register_extended: std_ulogic_vector(9 downto 0) := (others => '0');
     signal b_register_extended: std_ulogic_vector(9 downto 0) := (others => '0');
     signal sum_register: std_ulogic_vector(9 downto 0) := (others => '0');
+
+    --! Shifts right by one, shifting in a 0. The random logic rotates the
+    --! carry into bit 7 by holding back `ADD/SB(7)`.
+    function shift_right(value: std_ulogic_vector(7 downto 0)) return std_ulogic_vector is
+    begin
+        return '0' & value(7 downto 1);
+    end function;
 begin
     a_register_extended <= std_ulogic_vector('0' & a & '1');
     b_register_extended <= std_ulogic_vector('0' & b & '1') when carry_in_IADDC = '1'
@@ -78,7 +85,10 @@ begin
               a xor b when enable_xor_EORS = '1' else
               a and b when enable_and_ANDS = '1' else
               std_ulogic_vector(sum_register(8 downto 1)) when enable_sum_SUMS = '1' else
-              ('0' & a(7 downto 1)) when enable_right_shift_SRS = '1' else
+              -- The shifter reuses the AND gates, so it shifts A AND B. For a
+              -- shift of one operand, the other input is all ones (an
+              -- undriven, precharged bus)
+              shift_right(a and b) when enable_right_shift_SRS = '1' else
               (others => '0');
     
     carry_out_ACR <= sum_register(9);

@@ -3,8 +3,8 @@
 This sub-core holds the instruction decoder: the predecode stage, the
 instruction register, timing generation, the decoder ROM, the ready and
 interrupt control logic, and the random logic that turns the decoder lines into
-the @ref Ricoh_2A03_Signals "control signals". The entities aren't wired
-together into the CPU yet.
+the @ref Ricoh_2A03_Signals "control signals". @ref mos_6502 wires them
+together with the ALU and the datapath.
 
 ## Components
 
@@ -104,8 +104,9 @@ sit next to the `RDY` pad.
 
 @ref Ricoh_2A03_Signal_STOR and @ref Ricoh_2A03_Signal_PC_DB come from the
 @ref random_logic_controller, and lines 98 and 100 from the @ref decoder_rom.
-@ref Ricoh_2A03_Signal_DORES comes from the @ref interrupt_controller. The R/W pin's own latch
-isn't implemented either.
+@ref Ricoh_2A03_Signal_DORES comes from the @ref interrupt_controller. The R/W
+pin's latch is part of the ready controller too: it holds `WR`, inverted, from
+Phi1 through the whole cycle.
 
 ## Interrupt control
 
@@ -146,8 +147,8 @@ During T5 and T6 the controller pulls the low bits of ADL low
 On the real chip this logic sits in the dispatcher area, and the `/NMI`, `/IRQ`
 and `/RES` latches sit next to their pads. This core keeps every internal signal
 active-high, but the pins themselves are active-low. The @ref random_logic_controller injects BRK, and uses `BRK6E` and
-@ref Ricoh_2A03_Signal_RESP to reset the cycle counters. The P register doesn't
-output the I flag yet.
+@ref Ricoh_2A03_Signal_RESP to reset the cycle counters. The
+@ref status_register sets I on `BRK6E`, and pushes `B_OUT` as bit 4 of P.
 
 ## Random logic and dispatch
 
@@ -185,6 +186,8 @@ keeps them all active-high. It also differs from the Verilog model in one
 place: `ADH/ABH`, where it follows the wiki's transistor-level schematics
 instead. See the entity's documentation for details.
 
-A few commands have nowhere to go yet: the @ref status_register doesn't take
-`0/V` (CLV), or output the flags the random logic needs, and the
-@ref mos_6502_alu doesn't take `DSA`. The stack pointer doesn't need `S/S`.
+`DSA` has nowhere to go yet, since the decimal adjust adders aren't
+implemented. The @ref stack_pointer doesn't take
+@ref Ricoh_2A03_Signal_S_S either: the real register needs it to refresh its
+dynamic input latch from its output latch, but the FPGA's flip-flops hold their
+value on their own.

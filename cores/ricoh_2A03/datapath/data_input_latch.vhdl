@@ -2,6 +2,11 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 --! Data input latch for the Ricoh 2A03, connected to the DB, ADL, and ADH buses
+--! @details On the real chip, the data input latch is open during Phi2, and
+--! keeps the value on the data pins when Phi2 falls, which is when external
+--! memory has settled the bus. FPGA fabric can't synthesize a level-sensitive
+--! latch cleanly, so `load` is sampled on the @ref metaclock instead, and the
+--! latch follows the data pins one metaclock behind while it's high.
 entity data_input_latch is
     port(
         --! Load signal for the register from the data input
@@ -20,17 +25,22 @@ entity data_input_latch is
         --! @ref Ricoh_2A03_Signal_DL_ADL
         adl_bus_enable_DL_ADL: in std_ulogic;
         --! @ref Ricoh_2A03_ADL
-        adl_bus_port: out std_ulogic_vector(7 downto 0)
+        adl_bus_port: out std_ulogic_vector(7 downto 0);
+        --! Clock to drive the latch circuitry
+        --! @ref metaclock
+        metaclock: in std_ulogic
     );
 end entity;
 
 architecture rtl of data_input_latch is
     signal register_data: std_ulogic_vector(7 downto 0) := (others => '0');
 begin
-    process(load, data_in)
+    process(metaclock)
     begin
-        if load'event and load = '1' then
-            register_data <= data_in;
+        if rising_edge(metaclock) then
+            if load = '1' then
+                register_data <= data_in;
+            end if;
         end if;
     end process;
 

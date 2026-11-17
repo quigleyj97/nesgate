@@ -99,11 +99,14 @@ pushd $BUILD_DIR
     eval "$GHDL --synth --out=verilog toplevel" > ./toplevel.v
 
     # The ECP5 fabric has no internal tri-state buffers, so the CPU's shared
-    # 'Z'-driven buses only synthesize once the design is flattened and
-    # `tribuf -logic` turns them into muxes. Without that, yosys just warns
-    # about "multiple conflicting drivers" and produces a broken netlist, so
-    # make that warning an error.
-    eval "$YOSYS -e 'conflicting drivers' -p 'read_verilog ./toplevel.v; hierarchy -top toplevel; proc; flatten; tribuf -logic; debug synth_ecp5 -top toplevel -json ./toplevel.ulx3s.json'"
+    # 'Z'-driven buses only synthesize once the design is flattened, and
+    # `tribuf -merge` merges each bus's drivers into one tri-state buffer. The
+    # precharge_tribuf techmap then turns each of those into a mux that reads
+    # all ones while nothing drives it, like a precharged bus. A driver that
+    # isn't a tri-state buffer (or only drives some of the bus's bits) doesn't
+    # merge, and yosys just warns about "multiple conflicting drivers" and
+    # produces a broken netlist, so make that warning an error.
+    eval "$YOSYS -e 'conflicting drivers' -p 'read_verilog ./toplevel.v; hierarchy -top toplevel; proc; flatten; tribuf -merge; techmap -map ../techmaps/precharge_tribuf.v; debug synth_ecp5 -top toplevel -json ./toplevel.ulx3s.json'"
     eval "$NEXTPNR --json ./toplevel.ulx3s.json --textcfg ./toplevel.ulx3s.config --lpf ../targets/ulx3s.lpf --85k --package CABGA381"
     eval "$ECPPACK ./toplevel.ulx3s.config ./toplevel.ulx3s.bit --idcode $IDCODE"
 popd

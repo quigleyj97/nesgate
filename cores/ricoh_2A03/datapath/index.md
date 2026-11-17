@@ -33,9 +33,17 @@ two:
   `SB/DB` and `SB/ADH` merge the buses they connect.
 
 Subunits outside the datapath (e.g. the ALU) drive the buses through the
-`drive_*` ports, and read them from the `databus_*` ports.
+`drive_*` ports, and read them from the `databus_*` ports. A bus that nothing
+outside drives gets all ones, which reads the same as `'Z'`.
+
+The data pins are split into `data_in` (read by the data input latch) and
+`data_out` (driven by the data output register, `'Z'` unless writing during
+Phi2), since the FPGA fabric has no internal tri-states.
+For synthesis, the @ref techmaps "precharge techmap" turns each bus's merged
+tri-state drivers into a mux that reads all ones while nothing drives it.
 
 It holds the accumulator, the X and Y index registers, the stack pointer, the
 status register, the address bus registers, the data input/output latches, the
-program counter (see @ref MOS_6502_PC_Registers), and the bus multiplexer. The
-ALU (@ref logic_core) and the decimal adjust adders aren't wired in yet.
+program counter (see @ref MOS_6502_PC_Registers), and the bus multiplexer.
+@ref mos_6502 wires it to the ALU (@ref logic_core). The decimal adjust adders
+aren't implemented yet.

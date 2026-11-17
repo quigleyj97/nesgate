@@ -20,8 +20,6 @@
 --!
 --! There's no need to model the precharge per phase: the buses are
 --! precharged every phi2, and hold their charge through phi1.
---! Breaknes calls this the bus multiplexer, and treats the precharge MOSFETs
---! as part of it.
 
 library ieee;
 use ieee.std_logic_1164.all;

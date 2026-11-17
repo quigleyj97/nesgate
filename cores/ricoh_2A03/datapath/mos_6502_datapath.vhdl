@@ -1,4 +1,4 @@
---! @file core.vhdl
+--! @file mos_6502_datapath.vhdl
 --! @brief Wrapper component holding the data input/output latches, the
 --! accumulator and index registers, the address registers, the program
 --! counter, the stack pointer, the status register, and the bus multiplexer.
@@ -15,8 +15,14 @@ use ieee.std_logic_1164.all;
 
 entity mos_6502_datapath is
     port(
-        --! The external-facing data pins
-        data: inout std_ulogic_vector(7 downto 0);
+        --! The external-facing data pins, as read by the data input latch.
+        --! The real pins are bidirectional, but the FPGA fabric has no internal
+        --! tri-states, so they're split into `data_in` and `data_out`.
+        data_in: in std_ulogic_vector(7 downto 0);
+        --! The external-facing data pins, as driven by the data output
+        --! register. 'Z' unless writing (`R/W` low) during Phi2, when the real
+        --! pins would be released.
+        data_out: out std_ulogic_vector(7 downto 0);
         --! The external-facing address pins
         address: out std_ulogic_vector(15 downto 0);
         --! @ref Ricoh_2A03_Phi1
@@ -166,6 +172,10 @@ entity mos_6502_datapath is
         signal_0_V: in std_ulogic;
         --! @ref Ricoh_Signal_DB7_N
         signal_DB7_N: in std_ulogic;
+        --! @ref Ricoh_2A03_Signal_BRK6E, which sets I
+        signal_BRK6E: in std_ulogic;
+        --! @ref Ricoh_2A03_Signal_B_OUT, pushed as bit 4 of P
+        signal_B_OUT: in std_ulogic;
         -- #endregion
 
         -- #region Flags
@@ -217,7 +227,8 @@ architecture rtl of mos_6502_datapath is
             databus_DB: out std_ulogic_vector(7 downto 0);
             load_SB_AC: in std_ulogic;
             output_enable_AC_SB: in std_ulogic;
-            output_enable_AC_DB: in std_ulogic
+            output_enable_AC_DB: in std_ulogic;
+            metaclock: in std_ulogic
         );
     end component;
     component index_register is
@@ -225,11 +236,13 @@ architecture rtl of mos_6502_datapath is
             data_in: in std_ulogic_vector(7 downto 0);
             load: in std_ulogic;
             data_out: out std_ulogic_vector(7 downto 0);
-            output_enable: in std_ulogic
+            output_enable: in std_ulogic;
+            metaclock: in std_ulogic
         );
     end component;
     component stack_pointer is
         port(
+            phi2: in std_ulogic;
             signal_S_SB: in std_ulogic;
             signal_S_ADL: in std_ulogic;
             signal_SB_S: in std_ulogic;
@@ -248,7 +261,8 @@ architecture rtl of mos_6502_datapath is
             adh_bus_enable_DL_ADH: in std_ulogic;
             adh_bus_port: out std_ulogic_vector(7 downto 0);
             adl_bus_enable_DL_ADL: in std_ulogic;
-            adl_bus_port: out std_ulogic_vector(7 downto 0)
+            adl_bus_port: out std_ulogic_vector(7 downto 0);
+            metaclock: in std_ulogic
         );
     end component;
     component data_output_latch is
@@ -257,7 +271,8 @@ architecture rtl of mos_6502_datapath is
             phi2: in std_ulogic;
             signal_R_NOT_W: in std_ulogic;
             data_in: in std_ulogic_vector(7 downto 0);
-            data_out: out std_ulogic_vector(7 downto 0)
+            data_out: out std_ulogic_vector(7 downto 0);
+            metaclock: in std_ulogic
         );
     end component;
     component status_register is
@@ -283,6 +298,8 @@ architecture rtl of mos_6502_datapath is
             signal_1_V: in std_ulogic;
             signal_0_V: in std_ulogic;
             signal_DB7_N: in std_ulogic;
+            brk_cycle_6_end_BRK6E: in std_ulogic;
+            break_flag_B_OUT: in std_ulogic;
             carry_flag_C_OUT: out std_ulogic;
             zero_flag_Z_OUT: out std_ulogic;
             interrupt_disable_I_OUT: out std_ulogic;
@@ -398,24 +415,28 @@ begin
             std_logic_vector(databus_DB) => drivers_DB,
             load_SB_AC => load_SB_AC,
             output_enable_AC_SB => output_enable_AC_SB,
-            output_enable_AC_DB => output_enable_AC_DB
+            output_enable_AC_DB => output_enable_AC_DB,
+            metaclock => metaclock
         );
     X_REG: index_register
         port map(
             data_in => bus_SB,
             load => load_SB_X,
             std_logic_vector(data_out) => drivers_SB,
-            output_enable => output_enable_X_SB
+            output_enable => output_enable_X_SB,
+            metaclock => metaclock
         );
     Y_REG: index_register
         port map(
             data_in => bus_SB,
             load => load_SB_Y,
             std_logic_vector(data_out) => drivers_SB,
-            output_enable => output_enable_Y_SB
+            output_enable => output_enable_Y_SB,
+            metaclock => metaclock
         );
     S_REG: stack_pointer
         port map(
+            phi2 => phi2,
             signal_S_SB => output_enable_S_SB,
             signal_S_ADL => output_enable_S_ADL,
             signal_SB_S => load_SB_S,
@@ -447,6 +468,8 @@ begin
             signal_1_V => signal_1_V,
             signal_0_V => signal_0_V,
             signal_DB7_N => signal_DB7_N,
+            brk_cycle_6_end_BRK6E => signal_BRK6E,
+            break_flag_B_OUT => signal_B_OUT,
             carry_flag_C_OUT => carry_flag_C_OUT,
             zero_flag_Z_OUT => zero_flag_Z_OUT,
             interrupt_disable_I_OUT => interrupt_disable_I_OUT,
@@ -461,7 +484,8 @@ begin
             data_in => bus_ADH,
             load => load_ABH,
             data_out => address(15 downto 8),
-            output_enable => '1'
+            output_enable => '1',
+            metaclock => metaclock
         );
     load_ABL <= load_ADL_ABL and phi1;
     ABL_REG: index_register
@@ -469,18 +493,20 @@ begin
             data_in => bus_ADL,
             load => load_ABL,
             data_out => address(7 downto 0),
-            output_enable => '1'
+            output_enable => '1',
+            metaclock => metaclock
         );
     DL: data_input_latch
         port map(
             load => phi2,
-            data_in => data,
+            data_in => data_in,
             db_bus_enable_DL_DB => output_enable_DL_DB,
             std_logic_vector(db_bus_port) => drivers_DB,
             adh_bus_enable_DL_ADH => output_enable_DL_ADH,
             std_logic_vector(adh_bus_port) => drivers_ADH,
             adl_bus_enable_DL_ADL => output_enable_DL_ADL,
-            std_logic_vector(adl_bus_port) => drivers_ADL
+            std_logic_vector(adl_bus_port) => drivers_ADL,
+            metaclock => metaclock
         );
     DOR: data_output_latch
         port map(
@@ -488,7 +514,8 @@ begin
             phi2 => phi2,
             signal_R_NOT_W => signal_R_NOT_W,
             data_in => bus_DB,
-            data_out => data
+            data_out => data_out,
+            metaclock => metaclock
         );
 
     load_PCLS_from_PCL <= load_PCL_PCL and phi1;

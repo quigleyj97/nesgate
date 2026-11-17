@@ -106,9 +106,13 @@ nibble, so the program counter wraps from `0xFFFF` to `0x0000`.
 ### `S/S` Refresh S register value {#Ricoh_2A03_Signal_S_S}
 
 Asserted whenever `SB/S` isn't. The @ref random_logic_controller makes it, but
-the @ref stack_pointer doesn't use it: the real register needs it to keep its
-value valid between many CPU cycles (since it might be a long time between
-reads/writes), but that is not necessary on FPGA fabric.
+the @ref stack_pointer doesn't use it: the real register needs it to refresh
+its input latch from its output latch, to keep its value valid between many CPU
+cycles (since it might be a long time between reads/writes), but that is not
+necessary on FPGA fabric.
+
+`SB/S` loads the input latch during Phi1, and the output latch, which drives
+`S/SB` and `S/ADL`, follows it during Phi2.
 
 ### `S/SB` Enable S register output to the SB bus {#Ricoh_2A03_Signal_S_SB}
 
@@ -153,11 +157,12 @@ At least, exclusive is what I'm guessing the "E" in "EOR" expands to.
 ### `ORS` - ALU Logical OR Enable {#Ricoh2A03_ALU_ORS}
 ### `SRS` - ALU Shift Right Enable {#Ricoh2A03_ALU_SRS}
 
-TBD: Is this a logical or arithmetic shift?
-
-The 6502 supports instructions for both, and strangely while this only seems to
-support right-shifts I know the CPU also has both arithmetic and logical left
-shifts.
+A logical shift right of A AND B: the shifter reuses the AND gates. A shift of
+one operand loads it into one input, and the other reads all ones from an
+undriven, precharged bus. A 0 is shifted into bit 7, and ROR rotates the carry
+in by holding back `ADD/SB(7)`, so SB7 reads the precharge. Left shifts don't
+need a shifter: they add the operand to itself (`SUMS`). The carry out of a
+right shift is loaded straight from DB0 (`DB0/C`), not from `ACR`.
 
 ### `ADD/ADL` - Enable Adder Hold Register ADL Bus Output {#Ricoh2A03_ADD_ADL}
 ### `ADD/SB(0-6)` - Enable Adder Hold Register SB Bus Outpu, bits 0-6 {#Ricoh2A03_ADD_SB_0_6}
@@ -234,6 +239,9 @@ Used by the BVC/BVS, BPL/BMI and BNE/BEQ branches.
 
 When asserted, the CPU wants to execute a bus read on the next Phi2. Conversely,
 when not asserted, the CPU wants to execute a write on the next Phi2.
+
+The @ref ready_controller latches it from @ref Ricoh_2A03_Signal_WR during
+Phi1, so it holds for the whole cycle.
 
 ## Predecode signals
 

@@ -1,43 +1,51 @@
 from typing import TYPE_CHECKING
 
 import cocotb
+from cocotb.clock import Clock
 from cocotb.triggers import Timer
 
 if TYPE_CHECKING:
     from data_input_latch import DataInputLatch as DUT
 
+
 @cocotb.test()
 async def test_data_input_latch(dut: "DUT"):
-    # Verify the register can load a value
-    dut.data_in.value = 0b00000000
-    dut.load.value = False
-    dut.db_bus_enable_DL_DB.value = False
-    dut.adh_bus_enable_DL_ADH.value = False
-    dut.adl_bus_enable_DL_ADL.value = False
-    await Timer(1, unit="fs")
-    dut.load.value = True
-    await Timer(1, unit="fs")
-    dut.load.value = False
-    await Timer(1, unit="fs")
-    assert dut.register_data.value == 0b00000000
+    """The latch follows the data pins while load (Phi2) is high, keeps the
+    last value, and drives DB, ADH and ADL when enabled."""
+    cocotb.start_soon(Clock(dut.metaclock, 1, unit="ns").start())
+    dut.data_in.value = 0x00
+    dut.load.value = 0
+    dut.db_bus_enable_DL_DB.value = 0
+    dut.adh_bus_enable_DL_ADH.value = 0
+    dut.adl_bus_enable_DL_ADL.value = 0
+    await Timer(1, unit="ns")
+    dut.load.value = 1
+    await Timer(2, unit="ns")
+    dut.data_in.value = 0x96
+    await Timer(2, unit="ns")
+    dut.load.value = 0
+    await Timer(1, unit="ns")
+    dut.data_in.value = 0x00
+    await Timer(2, unit="ns")
+    assert dut.register_data.value == 0x96
 
     # Assert that the register outputs open bus when the enable signals are low
     assert not dut.db_bus_port.value.is_resolvable
     assert not dut.adh_bus_port.value.is_resolvable
     assert not dut.adl_bus_port.value.is_resolvable
 
-    dut.db_bus_enable_DL_DB.value = True
-    await Timer(1, unit="fs")
-    assert dut.db_bus_port.value == 0b00000000
-    dut.db_bus_enable_DL_DB.value = False
+    dut.db_bus_enable_DL_DB.value = 1
+    await Timer(1, unit="ns")
+    assert dut.db_bus_port.value == 0x96
+    dut.db_bus_enable_DL_DB.value = 0
 
-    dut.adh_bus_enable_DL_ADH.value = True
-    await Timer(1, unit="fs")
-    assert dut.adh_bus_port.value == 0b00000000
+    dut.adh_bus_enable_DL_ADH.value = 1
+    await Timer(1, unit="ns")
+    assert dut.adh_bus_port.value == 0x96
     assert not dut.db_bus_port.value.is_resolvable
-    dut.adh_bus_enable_DL_ADH.value = False
+    dut.adh_bus_enable_DL_ADH.value = 0
 
-    dut.adl_bus_enable_DL_ADL.value = True
-    await Timer(1, unit="fs")
-    assert dut.adl_bus_port.value == 0b00000000
+    dut.adl_bus_enable_DL_ADL.value = 1
+    await Timer(1, unit="ns")
+    assert dut.adl_bus_port.value == 0x96
     assert not dut.adh_bus_port.value.is_resolvable

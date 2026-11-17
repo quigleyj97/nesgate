@@ -24,6 +24,7 @@ class State(NamedTuple):
     WR: int
     ReadyPhi1: int
     PRDY: int
+    R_NOT_W: int
 
 
 def state(dut: "DUT") -> State:
@@ -32,10 +33,11 @@ def state(dut: "DUT") -> State:
         WR=int(dut.write_cycle_WR.value),
         ReadyPhi1=int(dut.ready_phi1_ReadyPhi1.value),
         PRDY=int(dut.previous_ready_PRDY.value),
+        R_NOT_W=int(dut.read_not_write_R_NOT_W.value),
     )
 
 
-IDLE = State(ready=1, WR=0, ReadyPhi1=1, PRDY=1)
+IDLE = State(ready=1, WR=0, ReadyPhi1=1, PRDY=1, R_NOT_W=1)
 
 
 async def cycle(
@@ -178,3 +180,16 @@ async def test_dores_blocks_writes(dut: "DUT"):
     _, phi2 = await cycle(dut, rdy=0, dores=1)
     assert phi2.ready == 0, "Did not stall during reset"
     await cycle(dut)
+
+
+@cocotb.test()
+async def test_read_not_write_pin(dut: "DUT"):
+    """The R/W pin latches WR during Phi1, so it's low for the whole write cycle"""
+    await start(dut)
+
+    phi1, phi2 = await cycle(dut, writes=frozenset({"STOR"}))
+    assert (phi1.R_NOT_W, phi2.R_NOT_W) == (1, 1), "R/W fell before the write cycle"
+    phi1, phi2 = await cycle(dut)
+    assert (phi1.R_NOT_W, phi2.R_NOT_W) == (0, 0), "R/W did not stay low through the write cycle"
+    phi1, phi2 = await cycle(dut)
+    assert (phi1.R_NOT_W, phi2.R_NOT_W) == (1, 1), "R/W did not go back to read"

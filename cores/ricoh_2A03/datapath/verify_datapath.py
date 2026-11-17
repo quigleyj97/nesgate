@@ -9,7 +9,6 @@ when it isn't enabled, and the bus resolves to whichever one is driving.
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.handle import Force, Release
 from cocotb.triggers import Timer
 from cocotb.types import LogicArray
 
@@ -69,6 +68,8 @@ CONTROL_SIGNALS = [
     "signal_1_V",
     "signal_0_V",
     "signal_DB7_N",
+    "signal_BRK6E",
+    "signal_B_OUT",
 ]
 
 BUSES = ["databus_SB", "databus_DB", "databus_ADH", "databus_ADL"]
@@ -83,14 +84,17 @@ async def reset(dut: "DUT"):
         getattr(dut, name).value = 0
     # Read mode, so the data output latch doesn't drive the data pins
     dut.signal_R_NOT_W.value = 1
+    dut.signal_B_OUT.value = 1
+    dut.data_in.value = 0
     for name in DRIVERS:
         getattr(dut, name).value = UNDRIVEN
     await Timer(1, unit="ns")
 
 
 async def pulse(signal):
+    """Assert a signal for long enough for several metaclock edges."""
     signal.value = 1
-    await Timer(1, unit="ns")
+    await Timer(4, unit="ns")
     signal.value = 0
     await Timer(1, unit="ns")
 
@@ -221,8 +225,12 @@ async def test_status_flags_load_from_db(dut: "DUT"):
 
     dut.output_enable_P_DB.value = 1
     await Timer(1, unit="ns")
-    # Bit 4 isn't driven, so it reads the precharge
+    # Bit 4 is B_OUT, and bit 5 is always set
     assert dut.databus_DB.value == 0b1111_1001
+    dut.signal_B_OUT.value = 0
+    await Timer(1, unit="ns")
+    assert dut.databus_DB.value == 0b1110_1001, "Bit 4 should follow B_OUT"
+    dut.signal_B_OUT.value = 1
     dut.output_enable_P_DB.value = 0
 
     dut.signal_0_V.value = 1
@@ -312,10 +320,9 @@ async def test_address_registers(dut: "DUT"):
 async def test_data_input_latch(dut: "DUT"):
     """The data input latch loads from the data pins on phi2, and drives DB and ADL."""
     await reset(dut)
-    dut.data.value = Force(0x77)
+    dut.data_in.value = 0x77
     await Timer(1, unit="ns")
     await pulse(dut.phi2)
-    dut.data.value = Release()
 
     dut.output_enable_DL_DB.value = 1
     await Timer(1, unit="ns")
@@ -326,6 +333,28 @@ async def test_data_input_latch(dut: "DUT"):
     await Timer(1, unit="ns")
     assert dut.databus_ADL.value == 0x77
     assert dut.databus_DB.value == 0xFF, "DB should be precharged again"
+
+
+@cocotb.test()
+async def test_data_output_latch(dut: "DUT"):
+    """The data output register loads DB during phi1, and drives the data pins
+    during phi2 only while writing."""
+    await reset(dut)
+    await load_from_sb(dut, dut.load_SB_AC, 0x6B)
+    dut.output_enable_AC_DB.value = 1
+    await phase(dut.phi1)
+    dut.output_enable_AC_DB.value = 0
+
+    dut.phi2.value = 1
+    await Timer(1, unit="ns")
+    assert not dut.data_out.value.is_resolvable, "DOR should not drive while reading"
+    dut.signal_R_NOT_W.value = 0
+    await Timer(1, unit="ns")
+    assert dut.data_out.value == 0x6B
+    dut.phi2.value = 0
+    await Timer(1, unit="ns")
+    assert not dut.data_out.value.is_resolvable, "DOR should only drive during phi2"
+    dut.signal_R_NOT_W.value = 1
 
 
 @cocotb.test()
@@ -378,7 +407,8 @@ async def test_stack_pointer(dut: "DUT"):
     await Timer(4, unit="ns")  # long enough for the metaclock to sample it
     dut.load_SB_S.value = 0
     dut.drive_SB.value = UNDRIVEN
-    await Timer(1, unit="ns")
+    # The value reaches S's outputs during phi2
+    await phase(dut.phi2)
     assert dut.databus_SB.value == 0xFF, "SB should be precharged again"
 
     dut.output_enable_S_ADL.value = 1
@@ -414,10 +444,9 @@ async def test_pass_mosfets(dut: "DUT"):
 
     # The pass MOSFETs are bidirectional: the data latch drives DB, and X
     # loads it from SB
-    dut.data.value = Force(0x99)
+    dut.data_in.value = 0x99
     await Timer(1, unit="ns")
     await pulse(dut.phi2)
-    dut.data.value = Release()
     dut.connect_SB_ADH.value = 0
     dut.output_enable_DL_DB.value = 1
     await Timer(1, unit="ns")
@@ -449,10 +478,9 @@ async def test_zero_page_address(dut: "DUT"):
     """0/ADH0 and 0/ADH(1-7) pull ADH to zero while the data latch drives ADL,
     addressing the zero page."""
     await reset(dut)
-    dut.data.value = Force(0x34)
+    dut.data_in.value = 0x34
     await Timer(1, unit="ns")
     await pulse(dut.phi2)
-    dut.data.value = Release()
 
     dut.output_enable_DL_ADL.value = 1
     dut.clear_0_ADH0.value = 1

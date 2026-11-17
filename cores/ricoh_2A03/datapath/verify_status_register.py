@@ -33,6 +33,8 @@ async def reset(dut: "DUT"):
     for name in LOAD_SIGNALS:
         getattr(dut, name).value = 0
     dut.signal_IR5.value = 0
+    dut.brk_cycle_6_end_BRK6E.value = 0
+    dut.break_flag_B_OUT.value = 1
     dut.signal_ACR.value = 0
     dut.signal_AVR.value = 0
     dut.enable_P_DB.value = 0
@@ -72,11 +74,15 @@ async def test_status_register_data_bus(dut: "DUT"):
     await load(dut, *DB_LOADS)
     assert dut.register_data.value == 0b11001111
 
-    # Bit 5 reads 1 on DB, and bit 4 isn't driven
+    # Bit 5 reads 1 on DB, and bit 4 is B_OUT
     dut.db_bus_in.value = 0
     dut.enable_P_DB.value = 1
     await Timer(1, unit="ns")
-    assert str(dut.db_bus_out.value) == "111Z1111", "Bit 4 isn't driven"
+    assert dut.db_bus_out.value == 0b11111111
+    dut.break_flag_B_OUT.value = 0
+    await Timer(1, unit="ns")
+    assert dut.db_bus_out.value == 0b11101111, "Bit 4 should follow B_OUT"
+    dut.break_flag_B_OUT.value = 1
     dut.enable_P_DB.value = 0
     await Timer(1, unit="ns")
     assert not dut.db_bus_out.value.is_resolvable
@@ -174,3 +180,18 @@ async def test_status_register_dbz(dut: "DUT"):
         assert dut.DBZ.value == 0, f"DBZ high with DB = {value:#04x}"
     await load(dut, "signal_DBZ_Z")
     assert dut.register_data.value == 0
+
+
+@cocotb.test()
+async def test_brk6e_sets_i(dut: "DUT"):
+    """BRK6E sets I: it reads as set right away, and stays set afterwards."""
+    await reset(dut)
+    assert dut.interrupt_disable_I_OUT.value == 0
+    dut.brk_cycle_6_end_BRK6E.value = 1
+    await Timer(1, unit="ns")
+    assert dut.interrupt_disable_I_OUT.value == 1, "I didn't read as set during BRK6E"
+    await phi1_phase(dut)
+    dut.brk_cycle_6_end_BRK6E.value = 0
+    await Timer(1, unit="ns")
+    assert dut.interrupt_disable_I_OUT.value == 1, "I didn't stay set after BRK6E"
+    assert dut.register_data.value == 0b0000_0100

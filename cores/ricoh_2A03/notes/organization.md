@@ -2,6 +2,8 @@
 
 ![Block diagram of everything currently implemented](./implemented.drawio.svg)
 
+- [x] @ref mos_6502 - the whole CPU, wiring the decoder, ALU and datapath
+  together. `verify_mos_6502.py` tests it end to end, running programs.
 - [~] @subpage Ricoh2A03_ALU
     - [x] @ref mos_6502_alu
     - [x] @ref adder_hold_register
