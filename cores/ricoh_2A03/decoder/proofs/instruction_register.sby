@@ -1,0 +1,22 @@
+[tasks]
+prove
+cover
+
+[options]
+prove: mode prove
+cover: mode cover
+cover: depth 6
+
+[engines]
+prove: abc pdr
+cover: smtbmc z3
+
+[script]
+read_verilog instruction_register.v
+read_verilog -formal -sv instruction_register_formal.sv
+prep -top instruction_register_formal
+check -assert
+
+[files]
+formal/instruction_register.v
+../cores/ricoh_2A03/decoder/proofs/instruction_register_formal.sv

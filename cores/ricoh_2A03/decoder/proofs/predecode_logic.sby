@@ -1,0 +1,21 @@
+[tasks]
+prove
+cover
+
+[options]
+depth 1
+prove: mode prove
+cover: mode cover
+
+[engines]
+smtbmc z3
+
+[script]
+read_verilog predecode_logic.v
+read_verilog -formal -sv predecode_logic_formal.sv
+prep -top predecode_logic_formal
+check -assert
+
+[files]
+formal/predecode_logic.v
+../cores/ricoh_2A03/decoder/proofs/predecode_logic_formal.sv

@@ -1,0 +1,22 @@
+[tasks]
+prove
+cover
+
+[options]
+prove: mode prove
+cover: mode cover
+cover: depth 12
+
+[engines]
+prove: abc pdr
+cover: smtbmc z3
+
+[script]
+read_verilog ready_controller.v
+read_verilog -formal -sv ready_controller_formal.sv
+prep -top ready_controller_formal
+check -assert
+
+[files]
+formal/ready_controller.v
+../cores/ricoh_2A03/decoder/proofs/ready_controller_formal.sv

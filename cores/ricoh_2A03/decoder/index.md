@@ -17,6 +17,153 @@ together with the ALU and the datapath.
 - @ref interrupt_controller
 - @ref random_logic_controller
 
+## Formal verification
+
+Each subunit of the decoder has its own SymbiYosys proof in `proofs/`, and
+`decoder_formal.sv` has one more that wires all eight together, as
+@ref mos_6502 does. `./formal` runs them all. Every proof has a `prove` task,
+which shows that the properties hold, and a `cover` task, which shows that
+every interesting case can actually happen, so no property passes trivially.
+
+The clocked proofs are unbounded (`abc pdr`), so they hold after any number of
+steps, not only the first few. Where a property can be stated without
+restating the VHDL, it is: the decoder ROM is checked against the decoded
+opcode patterns of the decoder table, `TWOCYCLE` against a list of opcodes,
+and the whole decoder against the documented cycle count of every opcode.
+
+| Subunit | Harness | Clocking |
+|---|---|---|
+| @ref predecode_register | `predecode_register_formal.sv` | metaclock, with Phi2 changing freely |
+| @ref predecode_logic | `predecode_logic_formal.sv` | combinational, one instant |
+| @ref instruction_register | `instruction_register_formal.sv` | metaclock, with Phi1 changing freely |
+| @ref decoder_rom | `decoder_rom_formal.sv` | combinational, one instant |
+| @ref timing_generator | `timing_generator_formal.sv` | metaclock, with Phi1 and Phi2 changing freely |
+| @ref ready_controller | `ready_controller_formal.sv` | metaclock, with Phi1 and Phi2 changing freely |
+| @ref interrupt_controller | `interrupt_controller_formal.sv` | metaclock, with Phi1 and Phi2 changing freely |
+| @ref random_logic_controller | `random_logic_controller_formal.sv` | metaclock, with Phi1 and Phi2 changing freely |
+| All eight, wired together | `decoder_formal.sv` | metaclock, with real Phi1/Phi2 phases of 3 or 4 metaclock cycles |
+
+In the unit proofs, Phi1 and Phi2 can change on any metaclock edge, and can
+even be high at once, so they cover timings a real clock generator never
+produces. Every latch powers up as documented in its entity.
+
+### predecode_register and instruction_register
+
+On every metaclock edge, the predecode register takes the data bus if Phi2 is
+high, and the instruction register takes the predecoded opcode if Phi1 and
+`FETCH` are both high. Otherwise each holds its value. Both power up as 0.
+
+### predecode_logic
+
+For every opcode, with and without `0/IR`:
+
+- The opcode passes through, or becomes BRK (`0x00`) while `0/IR` is set.
+- `TWOCYCLE` is set exactly for the 52 opcodes that finish in 2 cycles
+  (immediate operands, and the single-byte opcodes other than PHP, PLP, PHA
+  and PLA), listed by hand rather than by bit pattern.
+- `IMPLIED` is set exactly for the opcodes in columns 8 and A of the opcode
+  matrix.
+
+### decoder_rom
+
+Every one of the 130 lines is checked for every opcode, every combination of
+the six cycle inputs (several at once included) and both values of `PRDY`,
+against the opcodes it matches and the cycle it fires in, as decoded in the
+decoder table. On top of that, line 73 (Branch T0) needs `PRDY`, and lines 83,
+90 and 128 don't fire for the push/pull instructions.
+
+### timing_generator
+
+The model describes each counter by its outputs: during Phi2 the counters
+sample their own outputs, and during Phi1 they move on to the next cycle.
+`T1` and `TRES2` are `TRES1` and `TRESX` from Phi1. T2-T5 shift on from T1-T4
+while ready, hold while not ready, and clear on `TRES2`. `T0` and `T1X`,
+`T6` and `T7` follow their documented rules. Cover checks reach T5, T7, `T0`
+together with T2, a stall holding T3, and `TRES2` clearing the counter.
+
+### ready_controller
+
+A model of the documented behavior, phase by phase, plus two properties the
+rest of the CPU relies on, on every step: a cycle that isn't ready never
+writes, and a reset never writes (so the BRK sequence's pushes become reads).
+
+### interrupt_controller
+
+A model of the pad latches, the BRK cycle 6-7 counter, the reset flip-flop,
+the NMI edge detector, the B flag and the vector latches, plus: the vector
+lines only ever select `0xFFFA`, `0xFFFC` or `0xFFFE`, a reset clears
+`B_OUT`, and `BRK6E` only happens while ready.
+
+### random_logic_controller
+
+The controller is too large to restate as a model, and only the VHDL defines
+its equations, so its unit proof checks what holds for any decoder lines:
+
+- The register, accumulator, ALU input and PC select commands are off during
+  Phi2.
+- The commands that share a latch (`SB/ADD` and `0/ADD`, `ADL/PCL` and
+  `PCL/PCL`, `ADH/PCH` and `PCH/PCH`, `SB/S` and `S/S`) have exactly one side
+  on outside Phi2. The B input gets `DB/ADD` unless it gets `NOT DB` or `ADL`,
+  and the ALU sums unless another operation is selected.
+- Every command latched during Phi2 only changes on an edge during Phi2 (or
+  when Phi2 cuts it off), and every command latched during Phi1 only on an
+  edge during Phi1.
+- `SHIFT`, `MemOP` and `STOR` come from their decoder lines, `FETCH` only
+  happens while ready, `0/IR` injects BRK unless fetching with `B_OUT` set,
+  and reset and `BRK6E` restart the cycle counters.
+
+What each command does for each instruction is left to the decoder proof
+below, and to the CPU testbench.
+
+### The decoder
+
+The harness makes real clocks: Phi1 and Phi2 alternate, never overlap, and
+each phase lasts 3 or 4 metaclock cycles. `/RES` is held low for the first 3
+cycles, as at power-on. The data bus, and so every opcode and operand, is free
+on every metaclock edge. So are the flags, the branch direction on DB, and the
+ALU carry (page crossings), but each only changes when its source can: the
+carry during Phi2, the flags during Phi1, and DB outside Phi1.
+
+- `clean` (no stalls or interrupts after the power-on reset): every one of
+  the 151 documented opcodes takes its documented number of cycles, counted
+  from one `FETCH` to the next, with any operands, flags and page crossings.
+  A branch takes 2 cycles when it isn't taken (the flag that IR7-IR6 select
+  differs from IR5), and 3 or 4 when it is. Indexed reads take one more cycle
+  on a page crossing. Each opcode also writes to memory on the documented number of
+  cycles (1 for a store or push, 2 for a read-modify-write or JSR, 3 for
+  BRK). Every opcode but the 12 JAM opcodes finishes within 8 cycles, and the
+  instruction register holds the byte the CPU read.
+- `free` (RDY, `/NMI`, `/IRQ` and `/RES` free too, with RDY only changing
+  during Phi1, as the 6502 datasheet requires): a write cycle never stalls,
+  at most one of T2-T5 is set, and NMI is edge-triggered: once its vector has
+  been fetched, another NMI needs `/NMI` to have gone high first.
+
+Cover checks reach a page-crossing `LDA abs,X` (5 cycles), a taken branch
+crossing a page (4 cycles), a branch not taken (2 cycles), `INC abs,X` writing twice, a JAM opcode running
+past 8 cycles, a stall at T3, a write while RDY is low, and an NMI.
+
+### Not verified
+
+- The unofficial opcodes' cycle counts, apart from finishing within 8 cycles.
+- Whether a page is really crossed. The ALU carry is free, so the decoder
+  proof only checks that a taken branch or an indexed read takes one of its
+  two documented counts, not which one a given address needs.
+- Interrupt and stall timing in the decoder proof: the `clean` task assumes
+  neither happens, and the `free` task only checks safety properties.
+- What each control command does for each instruction. The decoder proof
+  checks dispatch, timing and writes; the CPU testbench checks the commands'
+  effect on the datapath.
+- That the latch chains settle on a real chip. The decoder proof assumes RDY,
+  the flags, DB and the ALU carry hold still for the last metaclock cycles of
+  the phases that sample them, which the real sources do. An input that
+  changed on a phase's last edge would split a decision between two latches
+  of the same phase (see @ref metaclock).
+- Inputs other than 0 and 1 (`'X'`, `'U'`, `'Z'`). The proofs run on the
+  synthesized netlist, where those don't exist.
+- The properties are checked against the decoder table, the documentation
+  and the 6502's documented timing, not against the real chip's transistor
+  netlist.
+
 ## Predecode
 
 During @ref Ricoh_2A03_Phi2 the opcode on the external data bus is latched into

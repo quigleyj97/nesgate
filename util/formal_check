@@ -16,11 +16,18 @@
 # formal/clock_divider_divide_by_2.v and formal/clock_divider_divide_by_7.v),
 # and the .sby file reads each one in its own task.
 #
+# A proof that wires several entities together in its harness lists them all,
+# joined by '+', and each one is synthesized to its own netlist:
+#
+#   predecode_register+decoder_rom:<sby file>
+#
+# Variants only apply to a proof of a single entity.
+#
 # Runs from the build directory, so .sby [files] paths are relative to it,
 # like each core's `analyze` (e.g. ../cores/...). Every core must have been
 # imported into the build library first.
 #
-# Usage: formal_check <build dir> <entity>:<sby file>[:<variant>...]...
+# Usage: formal_check <build dir> <entity>[+<entity>...]:<sby file>[:<variant>...]...
 
 set -x
 
@@ -63,8 +70,18 @@ for proof in "$@"; do
     fi
     name=$(basename "$sby_file" .sby)
 
+    IFS=+ read -ra entities <<< "$entity"
+
     synthesized=true
-    if ! eval "$GHDL -m -b $entity"; then
+    if [ ${#entities[@]} -gt 1 ]; then
+        for part in "${entities[@]}"; do
+            if ! eval "$GHDL -m -b $part" || ! synthesize "$part" "formal/$part.v" ""; then
+                synthesized=false
+                failed_entity=$part
+                break
+            fi
+        done
+    elif ! eval "$GHDL -m -b $entity"; then
         synthesized=false
         failed_entity=$entity
     elif [ ${#variants[@]} -eq 0 ]; then

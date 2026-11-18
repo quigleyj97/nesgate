@@ -1,0 +1,21 @@
+[tasks]
+prove
+cover
+
+[options]
+depth 1
+prove: mode prove
+cover: mode cover
+
+[engines]
+smtbmc z3
+
+[script]
+read_verilog decoder_rom.v
+read_verilog -formal -sv decoder_rom_formal.sv
+prep -top decoder_rom_formal
+check -assert
+
+[files]
+formal/decoder_rom.v
+../cores/ricoh_2A03/decoder/proofs/decoder_rom_formal.sv

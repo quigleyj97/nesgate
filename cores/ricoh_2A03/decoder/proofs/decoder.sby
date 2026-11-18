@@ -1,0 +1,41 @@
+[tasks]
+clean_prove clean prove
+clean_cover clean cover
+free_prove free prove
+free_cover free cover
+
+[options]
+prove: mode prove
+cover: mode cover
+clean_cover: depth 130
+free_cover: depth 130
+
+[engines]
+prove: abc pdr
+cover: smtbmc yices
+
+[script]
+read_verilog predecode_register.v
+read_verilog predecode_logic.v
+read_verilog instruction_register.v
+read_verilog timing_generator.v
+read_verilog decoder_rom.v
+read_verilog ready_controller.v
+read_verilog interrupt_controller.v
+read_verilog random_logic_controller.v
+read_verilog -formal -sv decoder_formal.sv
+clean: chparam -set CLEAN 1 decoder_formal
+free: chparam -set CLEAN 0 decoder_formal
+prep -top decoder_formal
+check -assert
+
+[files]
+formal/predecode_register.v
+formal/predecode_logic.v
+formal/instruction_register.v
+formal/timing_generator.v
+formal/decoder_rom.v
+formal/ready_controller.v
+formal/interrupt_controller.v
+formal/random_logic_controller.v
+../cores/ricoh_2A03/decoder/proofs/decoder_formal.sv
