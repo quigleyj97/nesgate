@@ -4,7 +4,7 @@
 --! @ref program_counter_low, this is a select register (PCHS), increment
 --! logic, and an output register (PCH). The select register loads either the
 --! current PCH value (PCH/PCH) or the ADH bus (ADH/PCH), the increment logic
---! adds the carry out of PCL (PCLC), and PCH latches the result on phi2.
+--! adds the carry out of PCL (PCLC), and PCH latches the result during phi2.
 --!
 --! The increment logic is split into two nibbles, as in Hanson's block
 --! diagram: the low nibble increments on PCLC, and its carry out (PCHC)
@@ -36,8 +36,8 @@ entity program_counter_high is
         bus_ADH_out     : out std_ulogic_vector(7 downto 0);
         --! @ref Ricoh_2A03_DB
         bus_DB          : out std_ulogic_vector(7 downto 0);
-        --! Clock to drive the select register's latch circuitry
-        --! @ref metaclock
+        --! Clock that samples the select register's and the program counter
+        --! register's latch signals, @ref metaclock
         metaclock       : in  std_ulogic
     );
 end entity program_counter_high;
@@ -46,7 +46,7 @@ end entity program_counter_high;
 architecture rtl of program_counter_high is
     signal program_counter_register        : std_ulogic_vector(7 downto 0) := (others => '0');
     signal program_counter_select_register : std_ulogic_vector(7 downto 0) := (others => '0');
-    --! Output of the increment logic, latched into PCH on phi2
+    --! Output of the increment logic, latched into PCH during phi2
     signal incremented_value               : std_ulogic_vector(7 downto 0);
     --! @ref Ricoh_2A03_PCHC Carry from the low nibble into the high nibble
     signal signal_PCHC                     : std_ulogic;
@@ -79,10 +79,16 @@ begin
         unsigned(program_counter_select_register(7 downto 4)) + unsigned'("" & signal_PCHC)
     );
 
-    process(phi2)
+    -- The program counter register is a latch that's open during Phi2, so
+    -- it's sampled on the metaclock while Phi2 is high. The select register
+    -- only loads while Phi2 is low, so the register can't count up more than
+    -- once per Phi2.
+    process(metaclock)
     begin
-        if rising_edge(phi2) then
-            program_counter_register <= incremented_value;
+        if rising_edge(metaclock) then
+            if phi2 = '1' then
+                program_counter_register <= incremented_value;
+            end if;
         end if;
     end process;
 

@@ -11,9 +11,9 @@
 --! Phi2, along with the result in the adder hold register. The random logic
 --! and the status register read them during the next Phi1, while the A and B
 --! input registers are already loading the next operands, so the combinational
---! outputs of @ref mos_6502_alu would have changed by then. The latches are
---! sampled on the @ref metaclock while Phi2 is high, like the rest of the
---! core's latches.
+--! outputs of @ref mos_6502_alu would have changed by then. The latches and
+--! the hold register are all sampled on the @ref metaclock while Phi2 is high,
+--! so they hold the carry, overflow and result from the same edge.
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -131,7 +131,8 @@ architecture rtl of logic_core is
             sb_bus_enable_ADD_SB_7: in std_ulogic;
             sb_bus_port: out std_ulogic_vector(7 downto 0);
             adl_bus_enable_ADD_ADL: in std_ulogic;
-            adl_bus_port: out std_ulogic_vector(7 downto 0)
+            adl_bus_port: out std_ulogic_vector(7 downto 0);
+            metaclock: in std_ulogic
         );
     end component;
 
@@ -188,7 +189,8 @@ begin
         sb_bus_enable_ADD_SB_7 => control_add_sb_7,
         sb_bus_port => sb_bus_out,
         adl_bus_enable_ADD_ADL => control_add_adl,
-        adl_bus_port => adl_bus_out
+        adl_bus_port => adl_bus_out,
+        metaclock => metaclock
     );
 
     process(metaclock)

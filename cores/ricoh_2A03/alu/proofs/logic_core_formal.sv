@@ -1,11 +1,13 @@
 // End-to-end properties of the logic core: the A and B input registers, the
 // ALU, the adder hold register, and the ACR and AVR latches, wired together.
 //
-// The core has two clocks: the metaclock (the input registers and the
-// ACR/AVR latches) and Phi2 (the adder hold register's edge), so the proof
-// runs with SymbiYosys's multiclock mode. Every step is a tick of the global
-// formal clock, and both clocks are ordinary inputs that can change on any
-// step, in any order, independently of each other.
+// Every register in the core is on the metaclock: the input registers, the
+// adder hold register and the ACR/AVR latches. The last three load while
+// Phi2 is high, so they always hold the result, carry and overflow of the
+// same operands. The proof runs with SymbiYosys's multiclock mode so that
+// the metaclock is an ordinary input: every step is a tick of the global
+// formal clock, and the metaclock and Phi2 can change on any step, in any
+// order, independently of each other.
 //
 // The harness keeps a model of every register, built from the textbook
 // definitions below, and checks the core's outputs against it on every step.
@@ -130,7 +132,6 @@ module logic_core_formal (
 
     // A register samples what its inputs were just before the clock edge
     wire f_metaclock_rose = metaclock && !f_metaclock_was;
-    wire f_phi2_rose = phi2 && !f_phi2_was;
 
     // The A and B input registers load on the metaclock
     wire [7:0] f_a = !f_metaclock_rose ? f_a_was
@@ -148,13 +149,12 @@ module logic_core_formal (
     wire [7:0] f_result_was = spec_result(f_a_was, f_b_was, f_i_addc_was,
         f_ors_was, f_eors_was, f_ands_was, f_sums_was, f_srs_was);
 
-    // The adder hold register loads on Phi2's rising edge
-    wire [7:0] f_hold = f_phi2_rose ? f_result_was : f_hold_was;
-
-    // The ACR and AVR latches load on the metaclock while Phi2 is high
-    wire f_flags_load = f_metaclock_rose && f_phi2_was;
-    wire f_acr = f_flags_load ? f_sum_was[8] : f_acr_was;
-    wire f_avr = f_flags_load
+    // The adder hold register and the ACR and AVR latches load on the
+    // metaclock while Phi2 is high
+    wire f_phi2_load = f_metaclock_rose && f_phi2_was;
+    wire [7:0] f_hold = f_phi2_load ? f_result_was : f_hold_was;
+    wire f_acr = f_phi2_load ? f_sum_was[8] : f_acr_was;
+    wire f_avr = f_phi2_load
         ? spec_overflow(f_a_was, f_b_was, f_i_addc_was) : f_avr_was;
 
     always @($global_clock) begin
@@ -206,7 +206,7 @@ module logic_core_formal (
         reach_split_sb: cover (add_sb_0_6 && !add_sb_7
             && sb_bus_out[6:0] != 7'h7f);
         // The hold register keeps its result while the ALU's output changes
-        reach_hold: cover (f_past_valid && !f_phi2_rose && add_adl
+        reach_hold: cover (f_past_valid && !f_phi2_load && add_adl
             && adl_bus_out != 8'hff && adl_bus_out != f_result_was);
         // The flags keep their value while Phi2 is low
         reach_flags_held: cover (f_metaclock_rose && !f_phi2_was

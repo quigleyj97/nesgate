@@ -29,8 +29,8 @@ entity program_counter_low is
         bus_ADL_out     : out std_ulogic_vector(7 downto 0);
         --! @ref Ricoh_2A03_DB
         bus_DB          : out std_ulogic_vector(7 downto 0);
-        --! Clock to drive the select register's latch circuitry
-        --! @ref metaclock
+        --! Clock that samples the select register's and the program counter
+        --! register's latch signals, @ref metaclock
         metaclock       : in  std_ulogic
     );
 end entity program_counter_low;
@@ -76,11 +76,16 @@ begin
         end if;
     end process;
     
-    -- Process to update program counter register on clock edge
-    process(phi2)
+    -- The program counter register is a latch that's open during Phi2, so
+    -- it's sampled on the metaclock while Phi2 is high. The select register
+    -- only loads while Phi2 is low, so the register can't count up more than
+    -- once per Phi2.
+    process(metaclock)
     begin
-        if rising_edge(phi2) then
-            program_counter_register <= increment_register;
+        if rising_edge(metaclock) then
+            if phi2 = '1' then
+                program_counter_register <= increment_register;
+            end if;
         end if;
     end process;
     

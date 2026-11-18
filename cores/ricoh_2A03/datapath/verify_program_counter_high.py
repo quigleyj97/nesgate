@@ -2,55 +2,64 @@ from typing import TYPE_CHECKING
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import FallingEdge, RisingEdge, Timer
+from cocotb.triggers import ClockCycles, Timer
 from cocotb.types import LogicArray
 
 if TYPE_CHECKING:
     from program_counter_high import ProgramCounterHigh as DUT
 
+#: Metaclock cycles per phase
+PHASE = 4
+
 
 async def setup(dut: "DUT"):
-    """Start the clocks, deassert every control signal, and float the buses."""
-    cocotb.start_soon(Clock(dut.phi2, 10, unit="ns").start())
+    """Start the metaclock, deassert every control signal, and float the buses."""
     cocotb.start_soon(Clock(dut.metaclock, 1, unit="ns").start())
+    dut.phi2.value = 0
     dut.signal_PCH_DB.value = 0
     dut.signal_PCH_ADH.value = 0
     dut.signal_PCLC.value = 0
     dut.signal_PCH_PCH.value = 0
     dut.signal_ADH_PCH.value = 0
     dut.bus_ADH_in.value = LogicArray("ZZZZZZZZ")
-    await Timer(1, unit="ns")
+    await ClockCycles(dut.metaclock, PHASE)
+
+
+async def phi2(dut: "DUT"):
+    """Run one Phi2, then return to Phi1."""
+    dut.phi2.value = 1
+    await ClockCycles(dut.metaclock, PHASE)
+    dut.phi2.value = 0
+    await ClockCycles(dut.metaclock, 1)
 
 
 async def load_from_adh(dut: "DUT", value: int):
-    """Load PCHS from ADH, and latch it into PCH on the next phi2."""
-    await FallingEdge(dut.phi2)
+    """Load PCHS from ADH during Phi1, and latch it into PCH during Phi2."""
     dut.bus_ADH_in.value = value
     dut.signal_ADH_PCH.value = 1
-    await RisingEdge(dut.phi2)
-    await FallingEdge(dut.phi2)
+    await ClockCycles(dut.metaclock, PHASE)
     dut.signal_ADH_PCH.value = 0
     dut.bus_ADH_in.value = LogicArray("ZZZZZZZZ")
-    await Timer(1, unit="ns")
+    await phi2(dut)
 
 
 async def cycle(dut: "DUT", pclc: int):
-    """Refresh PCHS from PCH, and latch PCHS + PCLC into PCH on phi2."""
+    """Refresh PCHS from PCH during Phi1, and latch PCHS + PCLC into PCH
+    during Phi2."""
     dut.signal_PCH_PCH.value = 1
     dut.signal_PCLC.value = pclc
-    await RisingEdge(dut.phi2)
-    await FallingEdge(dut.phi2)
+    await ClockCycles(dut.metaclock, PHASE)
     dut.signal_PCH_PCH.value = 0
+    await phi2(dut)
     dut.signal_PCLC.value = 0
-    await Timer(1, unit="ns")
 
 
 async def read_db(dut: "DUT") -> int:
     dut.signal_PCH_DB.value = 1
-    await Timer(1, unit="ns")
+    await Timer(1, unit="ps")
     value = int(dut.bus_DB.value)
     dut.signal_PCH_DB.value = 0
-    await Timer(1, unit="ns")
+    await Timer(1, unit="ps")
     return value
 
 
@@ -58,8 +67,7 @@ async def read_db(dut: "DUT") -> int:
 async def test_reset(dut: "DUT"):
     """PCH starts at zero, and doesn't drive either bus unless enabled."""
     await setup(dut)
-    await RisingEdge(dut.phi2)
-    await FallingEdge(dut.phi2)
+    await phi2(dut)
     assert not dut.bus_DB.value.is_resolvable, "DB should be open"
     assert not dut.bus_ADH_out.value.is_resolvable, "ADH should be open"
     assert await read_db(dut) == 0
@@ -73,7 +81,7 @@ async def test_load_from_adh(dut: "DUT"):
     assert await read_db(dut) == 0xA5
 
     dut.signal_PCH_ADH.value = 1
-    await Timer(1, unit="ns")
+    await Timer(1, unit="ps")
     assert dut.bus_ADH_out.value == 0xA5, f"Expected ADH to be 0xA5, got {dut.bus_ADH_out.value}"
     assert not dut.bus_DB.value.is_resolvable, "DB should be open"
 
@@ -107,10 +115,31 @@ async def test_increment_without_refresh(dut: "DUT"):
     await cycle(dut, pclc=0)
     dut.signal_PCLC.value = 1
     for _ in range(3):
-        await RisingEdge(dut.phi2)
-    await FallingEdge(dut.phi2)
+        await phi2(dut)
     dut.signal_PCLC.value = 0
     assert await read_db(dut) == 0x43
+
+
+@cocotb.test()
+async def test_follows_during_phi2(dut: "DUT"):
+    """PCH is open during Phi2, so it keeps the value from the end of Phi2,
+    and holds while Phi2 is low even if PCLC changes."""
+    await setup(dut)
+    await load_from_adh(dut, 0x42)
+    dut.signal_PCLC.value = 1
+    dut.phi2.value = 1
+    await ClockCycles(dut.metaclock, PHASE)
+    # PCLC drops partway through Phi2, and PCH follows it back
+    dut.signal_PCLC.value = 0
+    await ClockCycles(dut.metaclock, PHASE)
+    dut.phi2.value = 0
+    await ClockCycles(dut.metaclock, 1)
+    assert await read_db(dut) == 0x42
+
+    dut.signal_PCLC.value = 1
+    await ClockCycles(dut.metaclock, PHASE)
+    assert await read_db(dut) == 0x42
+    dut.signal_PCLC.value = 0
 
 
 @cocotb.test()

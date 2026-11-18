@@ -15,10 +15,12 @@ cover: smtbmc z3
 [script]
 read_verilog logic_core.v
 read_verilog -formal -sv logic_core_formal.sv
-prep -top logic_core_formal
+hierarchy -top logic_core_formal
+proc
 flatten
 tribuf -merge
 techmap -map precharge_tribuf.v
+prep -top logic_core_formal
 check -assert
 
 [files]

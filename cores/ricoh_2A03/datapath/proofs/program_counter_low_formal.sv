@@ -1,10 +1,11 @@
 // Properties of the program counter low byte: the select register (PCLS),
 // the increment logic, and PCL.
 //
-// PCLS loads on the metaclock, but PCL loads on the rising edge of Phi2, so
-// the proof runs with SymbiYosys's multiclock mode: every step is a tick of
-// the global formal clock, and both clocks are ordinary inputs that can
-// change on any step, independently of each other. Each register in the
+// Both PCLS and PCL load on the metaclock: PCLS when PCL/PCL or ADL/PCL is
+// high, and PCL while Phi2 is high. The proof runs with SymbiYosys's
+// multiclock mode so that the metaclock is an ordinary input: every step is
+// a tick of the global formal clock, and the metaclock, Phi2 and the control
+// signals can change on any step, independently of each other. Each register in the
 // model keeps the value it would take on its next edge, computed from the
 // inputs on the step before, like the netlist's registers.
 //
@@ -49,10 +50,11 @@ module program_counter_low_formal (
     reg [7:0] f_pcl_next_was = 8'b0;
 
     wire f_metaclock_rose = metaclock && !f_metaclock_was;
-    wire f_phi2_rose = phi2 && !f_phi2_was;
+    // PCL loads on a metaclock edge if Phi2 was high just before it
+    wire f_phi2_load = f_metaclock_rose && f_phi2_was;
 
     wire [7:0] f_select = f_metaclock_rose ? f_select_next_was : f_select_was;
-    wire [7:0] f_pcl = f_phi2_rose ? f_pcl_next_was : f_pcl_was;
+    wire [7:0] f_pcl = f_metaclock_rose ? f_pcl_next_was : f_pcl_was;
     // PCLS takes PCL (PCL/PCL), or else ADL (ADL/PCL), or else holds
     wire [7:0] f_select_next = pcl_pcl ? f_pcl : adl_pcl ? adl_in : f_select;
     // The increment logic adds 1/PC, with the carry out as PCLC
@@ -65,7 +67,7 @@ module program_counter_low_formal (
         f_select_was <= f_select;
         f_select_next_was <= f_select_next;
         f_pcl_was <= f_pcl;
-        f_pcl_next_was <= f_incremented[7:0];
+        f_pcl_next_was <= phi2 ? f_incremented[7:0] : f_pcl;
     end
 
     always @* begin
@@ -78,14 +80,15 @@ module program_counter_low_formal (
         check_adl: assert (adl_out == (pcl_adl ? f_pcl : 8'hff));
 
         // PCL increments through PCLS, with a carry out of 0xFF
-        reach_wrap: cover (f_phi2_rose && pcl_adl && adl_out == 8'h00
+        reach_wrap: cover (f_phi2_load && pcl_adl && adl_out == 8'h00
             && f_pcl_was == 8'hff);
         reach_pclc: cover (pclc && f_select == 8'hff);
         // A jump: ADL into PCLS, then into PCL without incrementing
-        reach_jump: cover (f_phi2_rose && pcl_db && db_out != 8'h00
+        reach_jump: cover (f_phi2_load && pcl_db && db_out != 8'h00
             && db_out != 8'hff && db_out != f_pcl_was + 8'd1);
-        // PCL holds through Phi2 while PCLS changes
-        reach_hold: cover (f_past_valid && phi2 && !f_phi2_rose && pcl_db
+        // PCL holds on a metaclock edge while Phi2 is low, even though
+        // PCLS + 1/PC differs
+        reach_hold: cover (f_metaclock_rose && !f_phi2_was && pcl_db
             && db_out != f_incremented[7:0]);
     end
 endmodule

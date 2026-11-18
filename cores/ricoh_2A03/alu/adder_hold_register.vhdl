@@ -1,10 +1,19 @@
+--! @file adder_hold_register.vhdl
+--! @brief The adder hold register (ADD) of the MOS 6502 ALU
+--! @details On the real chip, the hold register is a transparent latch that's
+--! open during Phi2 and holds the ALU's result through the next Phi1, while
+--! the A and B input registers load the next operands. Here it's sampled on
+--! the @ref metaclock while `load` (Phi2) is high, so it holds the result from
+--! the last metaclock edge of Phi2, the same edge as the ACR and AVR latches
+--! in @ref logic_core.
+
 library ieee;
 use ieee.std_logic_1164.all;
 
 entity adder_hold_register is
     port(
-        --! Load signal for the register from the data input
-        --! Should be wired to the clock generator Phi2 output
+        --! Load signal for the register from the data input, sampled on the
+        --! @ref metaclock. Should be wired to Phi2.
         load: std_ulogic;
         --! The data to be loaded into the register
         data_in: std_ulogic_vector(7 downto 0);
@@ -17,17 +26,21 @@ entity adder_hold_register is
         --! @ref Ricoh2A03_ADD_ADL
         adl_bus_enable_ADD_ADL: in std_ulogic;
         --! Port for the ADL bus of the MOS 6502
-        adl_bus_port: out std_ulogic_vector(7 downto 0)
+        adl_bus_port: out std_ulogic_vector(7 downto 0);
+        --! @ref metaclock
+        metaclock: in std_ulogic
     );
 end entity;
 
 architecture rtl of adder_hold_register is
     signal register_data: std_ulogic_vector(7 downto 0) := (others => '0');
 begin
-    process(load, data_in)
+    process(metaclock)
     begin
-        if load'event and load = '1' then
-            register_data <= data_in;
+        if rising_edge(metaclock) then
+            if load = '1' then
+                register_data <= data_in;
+            end if;
         end if;
     end process;
 

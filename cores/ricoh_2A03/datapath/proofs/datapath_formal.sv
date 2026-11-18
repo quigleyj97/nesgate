@@ -1,9 +1,9 @@
 // End-to-end properties of the datapath: every register, wired to the SB,
 // DB, ADH and ADL buses through the bus multiplexer, as synthesis sees it.
 //
-// The datapath has two clocks: the metaclock (every latch) and Phi2 (the
-// rising edge that loads PCL and PCH), so the proof runs with SymbiYosys's
-// multiclock mode. Every step is a tick of the global formal clock, and the
+// Every latch in the datapath is on the metaclock. The proof runs with
+// SymbiYosys's multiclock mode so that the metaclock is an ordinary input:
+// every step is a tick of the global formal clock, and the
 // metaclock, Phi1 and Phi2 are ordinary inputs that can change on any step,
 // in any order, independently of each other.
 //
@@ -172,9 +172,7 @@ module datapath_formal (
     // #region Clocks
     reg f_past_valid = 1'b0;
     reg f_metaclock_was = 1'b0;
-    reg f_phi2_was = 1'b0;
     wire f_metaclock_rose = metaclock && !f_metaclock_was;
-    wire f_phi2_rose = phi2 && !f_phi2_was;
     // #endregion
 
     // #region Registers
@@ -195,8 +193,7 @@ module datapath_formal (
     reg [7:0] f_pcl_was = 8'b0, f_pcl_next_was = 8'b0;
     reg [7:0] f_pch_was = 8'b0, f_pch_next_was = 8'b0;
 
-    // Every latch is on the metaclock, except PCL and PCH, which load on
-    // Phi2's rising edge
+    // Every latch is on the metaclock
     wire [7:0] f_ac = f_metaclock_rose ? f_ac_next_was : f_ac_was;
     wire [7:0] f_x = f_metaclock_rose ? f_x_next_was : f_x_was;
     wire [7:0] f_y = f_metaclock_rose ? f_y_next_was : f_y_was;
@@ -209,8 +206,8 @@ module datapath_formal (
     wire [7:0] f_dor = f_metaclock_rose ? f_dor_next_was : f_dor_was;
     wire [7:0] f_pcls = f_metaclock_rose ? f_pcls_next_was : f_pcls_was;
     wire [7:0] f_pchs = f_metaclock_rose ? f_pchs_next_was : f_pchs_was;
-    wire [7:0] f_pcl = f_phi2_rose ? f_pcl_next_was : f_pcl_was;
-    wire [7:0] f_pch = f_phi2_rose ? f_pch_next_was : f_pch_was;
+    wire [7:0] f_pcl = f_metaclock_rose ? f_pcl_next_was : f_pcl_was;
+    wire [7:0] f_pch = f_metaclock_rose ? f_pch_next_was : f_pch_was;
 
     // The flags, in the order they're pushed (N V D I Z C, leaving out bits
     // 5 and 4)
@@ -285,7 +282,6 @@ module datapath_formal (
     always @($global_clock) begin
         f_past_valid <= 1'b1;
         f_metaclock_was <= metaclock;
-        f_phi2_was <= phi2;
 
         f_ac_was <= f_ac;
         f_x_was <= f_x;
@@ -323,9 +319,9 @@ module datapath_formal (
             : phi1 && adl_pcl ? f_adl : f_pcls;
         f_pchs_next_was <= phi1 && pch_pch ? f_pch
             : phi1 && adh_pch ? f_adh : f_pchs;
-        // PCL and PCH take the incremented select registers
-        f_pcl_next_was <= f_pcl_incremented[7:0];
-        f_pch_next_was <= f_pchs + {7'b0, f_pclc};
+        // PCL and PCH take the incremented select registers during Phi2
+        f_pcl_next_was <= phi2 ? f_pcl_incremented[7:0] : f_pcl;
+        f_pch_next_was <= phi2 ? f_pchs + {7'b0, f_pclc} : f_pch;
     end
     // #endregion
 

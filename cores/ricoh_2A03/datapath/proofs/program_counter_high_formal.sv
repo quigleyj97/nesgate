@@ -40,10 +40,11 @@ module program_counter_high_formal (
     reg [7:0] f_pch_next_was = 8'b0;
 
     wire f_metaclock_rose = metaclock && !f_metaclock_was;
-    wire f_phi2_rose = phi2 && !f_phi2_was;
+    // PCH loads on a metaclock edge if Phi2 was high just before it
+    wire f_phi2_load = f_metaclock_rose && f_phi2_was;
 
     wire [7:0] f_select = f_metaclock_rose ? f_select_next_was : f_select_was;
-    wire [7:0] f_pch = f_phi2_rose ? f_pch_next_was : f_pch_was;
+    wire [7:0] f_pch = f_metaclock_rose ? f_pch_next_was : f_pch_was;
     // PCHS takes PCH (PCH/PCH), or else ADH (ADH/PCH), or else holds
     wire [7:0] f_select_next = pch_pch ? f_pch : adh_pch ? adh_in : f_select;
 
@@ -54,7 +55,7 @@ module program_counter_high_formal (
         f_select_was <= f_select;
         f_select_next_was <= f_select_next;
         f_pch_was <= f_pch;
-        f_pch_next_was <= f_select + {7'b0, pclc};
+        f_pch_next_was <= phi2 ? f_select + {7'b0, pclc} : f_pch;
     end
 
     always @* begin
@@ -66,12 +67,12 @@ module program_counter_high_formal (
         check_adh: assert (adh_out == (pch_adh ? f_pch : 8'hff));
 
         // The low nibble carries into the high nibble
-        reach_nibble_carry: cover (f_phi2_rose && pch_db && db_out == 8'h30
+        reach_nibble_carry: cover (f_phi2_load && pch_db && db_out == 8'h30
             && f_pch_was == 8'h2f);
-        reach_wrap: cover (f_phi2_rose && pch_adh && adh_out == 8'h00
+        reach_wrap: cover (f_phi2_load && pch_adh && adh_out == 8'h00
             && f_pch_was == 8'hff);
         // A jump: ADH into PCHS, then into PCH
-        reach_jump: cover (f_phi2_rose && pch_db && db_out != 8'h00
+        reach_jump: cover (f_phi2_load && pch_db && db_out != 8'h00
             && db_out != 8'hff && db_out != f_pch_was
             && db_out != f_pch_was + 8'd1);
     end

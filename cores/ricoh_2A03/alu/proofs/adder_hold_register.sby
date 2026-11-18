@@ -6,7 +6,6 @@ cover
 prove: mode prove
 cover: mode cover
 cover: depth 6
-multiclock on
 
 [engines]
 prove: abc pdr
@@ -15,10 +14,12 @@ cover: smtbmc z3
 [script]
 read_verilog adder_hold_register.v
 read_verilog -formal -sv adder_hold_register_formal.sv
-prep -top adder_hold_register_formal
+hierarchy -top adder_hold_register_formal
+proc
 flatten
 tribuf -merge
 techmap -map precharge_tribuf.v
+prep -top adder_hold_register_formal
 check -assert
 
 [files]

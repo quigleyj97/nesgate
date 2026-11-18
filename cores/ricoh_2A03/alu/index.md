@@ -19,7 +19,7 @@ undriven, precharged bus.
 | @ref mos_6502_alu | `alu_formal.sv` | combinational, one instant |
 | @ref a_input_register | `a_input_register_formal.sv` | metaclock only |
 | @ref b_input_register | `b_input_register_formal.sv` | metaclock only |
-| @ref adder_hold_register | `adder_hold_register_formal.sv` | `multiclock on`: the rising edge of `load` |
+| @ref adder_hold_register | `adder_hold_register_formal.sv` | metaclock only |
 | @ref logic_core | `logic_core_formal.sv` | `multiclock on`: the metaclock and Phi2, each changing freely |
 
 ### mos_6502_alu
@@ -74,16 +74,13 @@ as 0.
 
 ### adder_hold_register
 
-- On each rising edge of `load`, the register takes the value of `data_in`
-  from just before the edge. At any other time it holds that value, even
-  while `load` stays high and `data_in` changes.
+- On every metaclock edge, the register takes `data_in` if `load` (Phi2) was
+  high, and holds its value otherwise. So while `load` stays high it follows
+  `data_in`, and it keeps the value from the last edge before `load` falls.
 - `ADD/SB(0-6)`, `ADD/SB(7)` and `ADD/ADL` each put the held value on their
   own bits, independently of one another. A port that isn't enabled reads
   all ones (precharged).
 - It powers up as 0.
-
-The proof assumes `load` starts low, so the first step is never treated
-as an edge.
 
 ### logic_core
 
@@ -93,8 +90,8 @@ above:
 
 - The A and B input registers load on the metaclock, as above.
 - The adder hold register takes the ALU result (computed from the A and B
-  registers and the operation and carry controls) on each rising edge of
-  Phi2, and drives SB and ADL as above.
+  registers and the operation and carry controls) on each metaclock edge
+  while Phi2 is high, and drives SB and ADL as above.
 - `ACR` and `AVR` take the ALU's carry and overflow on each metaclock edge
   while Phi2 is high, and hold them otherwise.
 - `HC` is always 0.

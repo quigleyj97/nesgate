@@ -70,8 +70,8 @@ precharged bus.
 | @ref data_output_latch | `data_output_latch_formal.sv` | metaclock only |
 | @ref stack_pointer | `stack_pointer_formal.sv` | metaclock only |
 | @ref status_register | `status_register_formal.sv` | metaclock only |
-| @ref program_counter_low | `program_counter_low_formal.sv` | `multiclock on`: the metaclock and the rising edge of Phi2 |
-| @ref program_counter_high | `program_counter_high_formal.sv` | `multiclock on`: the metaclock and the rising edge of Phi2 |
+| @ref program_counter_low | `program_counter_low_formal.sv` | `multiclock on`: the metaclock, with Phi2 changing freely |
+| @ref program_counter_high | `program_counter_high_formal.sv` | `multiclock on`: the metaclock, with Phi2 changing freely |
 | @ref bus_multiplexer | `bus_multiplexer_formal.sv` | combinational, one instant |
 | @ref mos_6502_datapath | `datapath_formal.sv` | `multiclock on`: the metaclock, Phi1 and Phi2, each changing freely |
 
@@ -119,8 +119,10 @@ its flag. `P/DB` pushes N, V, 1, `B_OUT`, D, I, Z, C (bit 7 to bit 0).
 - On every metaclock edge, the select register takes PCL (`PCL/PCL`), or else
   ADL (`ADL/PCL`), or else holds. PCHS works the same way with PCH
   (`PCH/PCH`) and ADH (`ADH/PCH`).
-- On each rising edge of Phi2, PCL takes PCLS + `1/PC`, and PCH takes PCHS +
-  PCLC, each from just before the edge. Both wrap from 0xFF to 0x00, so the
+- On every metaclock edge while Phi2 was high, PCL takes PCLS + `1/PC`, and
+  PCH takes PCHS + PCLC, each from just before the edge, and they hold while
+  Phi2 is low. So, like the real latches, they keep the value from the last
+  metaclock edge of Phi2. Both wrap from 0xFF to 0x00, so the
   program counter wraps from 0xFFFF to 0x0000.
 - PCLC is set exactly when `1/PC` is high and PCLS is 0xFF.
 - `PCL/DB`, `PCL/ADL`, `PCH/DB` and `PCH/ADH` drive the register's value.
