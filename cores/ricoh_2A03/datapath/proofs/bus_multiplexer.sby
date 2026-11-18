@@ -1,0 +1,21 @@
+[tasks]
+prove
+cover
+
+[options]
+depth 1
+prove: mode prove
+cover: mode cover
+
+[engines]
+smtbmc z3
+
+[script]
+read_verilog bus_multiplexer.v
+read_verilog -formal -sv bus_multiplexer_formal.sv
+prep -top bus_multiplexer_formal
+check -assert
+
+[files]
+formal/bus_multiplexer.v
+../cores/ricoh_2A03/datapath/proofs/bus_multiplexer_formal.sv

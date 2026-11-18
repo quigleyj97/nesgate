@@ -1,0 +1,26 @@
+[tasks]
+prove
+cover
+
+[options]
+prove: mode prove
+cover: mode cover
+cover: depth 6
+
+[engines]
+prove: abc pdr
+cover: smtbmc z3
+
+[script]
+read_verilog status_register.v
+read_verilog -formal -sv status_register_formal.sv
+prep -top status_register_formal
+flatten
+tribuf -merge
+techmap -map precharge_tribuf.v
+check -assert
+
+[files]
+formal/status_register.v
+../cores/ricoh_2A03/datapath/proofs/status_register_formal.sv
+../techmaps/precharge_tribuf.v

@@ -1,0 +1,26 @@
+[tasks]
+prove
+cover
+
+[options]
+prove: mode prove
+cover: mode cover
+cover: depth 4
+
+[engines]
+prove: abc pdr
+cover: smtbmc z3
+
+[script]
+read_verilog accumulator.v
+read_verilog -formal -sv accumulator_formal.sv
+prep -top accumulator_formal
+flatten
+tribuf -merge
+techmap -map precharge_tribuf.v
+check -assert
+
+[files]
+formal/accumulator.v
+../cores/ricoh_2A03/datapath/proofs/accumulator_formal.sv
+../techmaps/precharge_tribuf.v

@@ -12,6 +12,16 @@ PROOFS=(
     b_input_register:../cores/ricoh_2A03/alu/proofs/b_input_register.sby
     adder_hold_register:../cores/ricoh_2A03/alu/proofs/adder_hold_register.sby
     logic_core:../cores/ricoh_2A03/alu/proofs/logic_core.sby
+    index_register:../cores/ricoh_2A03/datapath/proofs/index_register.sby
+    accumulator:../cores/ricoh_2A03/datapath/proofs/accumulator.sby
+    data_input_latch:../cores/ricoh_2A03/datapath/proofs/data_input_latch.sby
+    data_output_latch:../cores/ricoh_2A03/datapath/proofs/data_output_latch.sby
+    stack_pointer:../cores/ricoh_2A03/datapath/proofs/stack_pointer.sby
+    status_register:../cores/ricoh_2A03/datapath/proofs/status_register.sby
+    program_counter_low:../cores/ricoh_2A03/datapath/proofs/program_counter_low.sby
+    program_counter_high:../cores/ricoh_2A03/datapath/proofs/program_counter_high.sby
+    bus_multiplexer:../cores/ricoh_2A03/datapath/proofs/bus_multiplexer.sby
+    mos_6502_datapath:../cores/ricoh_2A03/datapath/proofs/datapath.sby
 )
 
 "$(dirname "$0")/../../util/formal_check" "$1" "${PROOFS[@]}"
