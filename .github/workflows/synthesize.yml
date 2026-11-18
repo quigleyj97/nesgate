@@ -9,7 +9,30 @@ on:
 permissions:
   contents: read
 
+env:
+  OSS_CAD_SUITE_VERSION: "2026-11-10"
+
 jobs:
+  formal:
+    name: Formal verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install OSS CAD Suite
+      uses: YosysHQ/setup-oss-cad-suite@v3
+      with:
+        version: ${{ env.OSS_CAD_SUITE_VERSION }}
+    - name: Run formal verification
+      run: ./formal
+    - name: Upload formal results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: formal-results
+        path: build/formal/
+
   build:
 
     runs-on: ubuntu-latest
@@ -31,7 +54,7 @@ jobs:
     - name: Install OSS CAD Suite
       uses: YosysHQ/setup-oss-cad-suite@v3
       with:
-        version: "2026-11-10"
+        version: ${{ env.OSS_CAD_SUITE_VERSION }}
     - name: Run FPGA synthesis
       env:
         # The suite sets VIRTUAL_ENV to itself; make pipenv use its own venv.

@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Run SymbiYosys proofs against entities in the build library. For each
+# <entity>:<sby file> pair, GHDL synthesizes the entity to a Verilog netlist at
+# formal/<entity>.v (SymbiYosys can't read VHDL with the open source
+# toolchain), then SymbiYosys runs every task in the .sby file. Results go in
+# formal/<sby name>_<task>/.
+#
+# Runs from the build directory, so .sby [files] paths are relative to it,
+# like each core's `analyze` (e.g. ../cores/...). Every core must have been
+# imported into the build library first.
+#
+# Usage: formal_check <build dir> <entity>:<sby file>...
+
+set -x
+
+BUILD_DIR=$1
+shift
+
+failed=()
+
+pushd "$BUILD_DIR" > /dev/null
+mkdir -p formal
+for proof in "$@"; do
+    entity=${proof%%:*}
+    sby_file=${proof#*:}
+    if ! eval "$GHDL -m -b $entity" \
+        || ! eval "$GHDL --synth --out=verilog $entity" > "formal/$entity.v"; then
+        failed+=("$sby_file (synthesizing $entity)")
+        continue
+    fi
+    if ! sby -f --prefix "formal/$(basename "$sby_file" .sby)" "$sby_file"; then
+        failed+=("$sby_file")
+    fi
+done
+popd > /dev/null
+
+if [ ${#failed[@]} -ne 0 ]; then
+    set +x
+    echo "formal_check failed for:" >&2
+    printf '  %s\n' "${failed[@]}" >&2
+    exit 1
+fi

@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Formally verify every core that has a `formal` script. Like `synth`, this
+# imports every core into build/ first, then runs each core's `formal` with
+# the build directory. Every core is checked before failing, so all problems
+# are listed. Needs GHDL, Yosys, SymbiYosys and Z3 (from OSS CAD Suite) on the
+# PATH.
+
+set -x
+set -e
+
+BASE_DIR=`realpath .`
+BUILD_DIR=$BASE_DIR/build
+
+rm -rf $BUILD_DIR/formal
+mkdir -p $BUILD_DIR/formal
+
+export GHDL=ghdl
+
+CORES=()
+for core in cores/*; do
+    if [ -d $core ]; then
+        CORES+=($core)
+    fi
+done
+
+# Import every core first, since cores can depend on one another
+for core in "${CORES[@]}"; do
+    pushd $core
+    ./analyze $BUILD_DIR
+    popd
+done
+
+failed_cores=()
+for core in "${CORES[@]}"; do
+    if [ -x $core/formal ] && ! $core/formal $BUILD_DIR; then
+        failed_cores+=($core)
+    fi
+done
+if [ ${#failed_cores[@]} -ne 0 ]; then
+    echo "Formal verification failed in: ${failed_cores[*]}" >&2
+    exit 1
+fi

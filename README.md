@@ -44,6 +44,25 @@ $ pipenv run ./synth
 If a tool isn't found on your PATH, `synth` falls back to running it in a
 Docker container.
 
+### Formal verification
+
+NESGate's build supports formal verification of cores and subunits. This is done
+via SymbiYosys, with harnesses written in Verilog (unfortunately) as SBY doesn't
+yet support VHDL harnesses via the open source toolchain.
+
+Running formal verification is done with the `./formal` script, which discovers
+cores eligible for FV and attempts to verify them. If any fail, the script exits
+with a non-zero exit code. It can be run via pipenv, like the synth script:
+
+```sh
+pipenv run ./formal
+```
+
+The runner discovers `cores/<name>/formal`, invokes it from that core's
+directory with the absolute repository root as its first argument, and
+reports failures after checking every participating core. Cores without a
+hook are skipped; a failing hook or finding no hooks makes the command fail.
+
 ### Programming
 
 To load the resulting bitstream onto an FPGA board, use your favorite programmer.

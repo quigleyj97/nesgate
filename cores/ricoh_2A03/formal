@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Formally verify this core's entities. Run by `formal` after every core has
+# been imported. $1 is the build directory.
+
+set -e
+
+# <entity>:<sby file>, with the .sby path relative to the build directory
+PROOFS=(
+    mos_6502_alu:../cores/ricoh_2A03/alu/formal/alu.sby
+)
+
+"$(dirname "$0")/../../util/formal_check" "$1" "${PROOFS[@]}"
