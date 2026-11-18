@@ -6,8 +6,9 @@ named after the task, with the .sby name as its package. It has a testcase for
 the build and one per property; engines that don't report per-property results
 (e.g. abc pdr) give a single testcase for the whole task instead. A property
 the task's mode doesn't check (asserts in a cover task, covers in a prove task)
-is skipped. `formal_check` writes the same kind of report for an entity that
-fails to synthesize, since SymbiYosys never runs then.
+is listed as skipped; those entries are left out of the merged report, since
+they aren't results. `formal_check` writes the same kind of report for an
+entity that fails to synthesize, since SymbiYosys never runs then.
 
 Standard library only: the formal CI job runs this without pipenv.
 
@@ -23,8 +24,6 @@ from util.ctrf import write_ctrf
 def testcase_status(testcase: ET.Element) -> str:
     if testcase.find("failure") is not None or testcase.find("error") is not None:
         return "failed"
-    if testcase.find("skipped") is not None:
-        return "skipped"
     return "passed"
 
 
@@ -42,6 +41,10 @@ def read_results(files: list[str]) -> list[dict[str, object]]:
         for suite in ET.parse(file).getroot().iter("testsuite"):
             suite_name = f"{suite.get('package')} {suite.get('name')}"
             for testcase in suite.iter("testcase"):
+                # SymbiYosys only skips properties the task's mode doesn't
+                # check (asserts in a cover task, covers in a prove task).
+                if testcase.find("skipped") is not None:
+                    continue
                 result: dict[str, object] = {
                     # Properties are named in the harness (e.g. check_carry);
                     # fall back to SymbiYosys's name for the build and for
