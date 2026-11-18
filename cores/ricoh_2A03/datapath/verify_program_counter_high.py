@@ -68,8 +68,8 @@ async def test_reset(dut: "DUT"):
     """PCH starts at zero, and doesn't drive either bus unless enabled."""
     await setup(dut)
     await phi2(dut)
-    assert not dut.bus_DB.value.is_resolvable, "DB should be open"
-    assert not dut.bus_ADH_out.value.is_resolvable, "ADH should be open"
+    assert dut.bus_DB.value == 0xFF, "DB should be released (all ones)"
+    assert dut.bus_ADH_out.value == 0xFF, "ADH should be released (all ones)"
     assert await read_db(dut) == 0
 
 
@@ -83,7 +83,7 @@ async def test_load_from_adh(dut: "DUT"):
     dut.signal_PCH_ADH.value = 1
     await Timer(1, unit="ps")
     assert dut.bus_ADH_out.value == 0xA5, f"Expected ADH to be 0xA5, got {dut.bus_ADH_out.value}"
-    assert not dut.bus_DB.value.is_resolvable, "DB should be open"
+    assert dut.bus_DB.value == 0xFF, "DB should be released (all ones)"
 
 
 @cocotb.test()

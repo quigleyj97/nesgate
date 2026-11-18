@@ -9,8 +9,7 @@
 // model keeps the value it would take on its next edge, computed from the
 // inputs on the step before, like the netlist's registers.
 //
-// The bus ports go through the same precharge techmap as synthesis (see
-// techmaps/precharge_tribuf.v), so a disabled port reads all ones.
+// A disabled bus port drives all ones, releasing the bus.
 module program_counter_low_formal (
     input metaclock,
     input phi2,

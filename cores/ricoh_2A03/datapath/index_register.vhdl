@@ -34,5 +34,5 @@ begin
         end if;
     end process;
 
-    data_out <= register_data when output_enable = '1' else (others => 'Z');
+    data_out <= register_data when output_enable = '1' else (others => '1');
 end architecture;

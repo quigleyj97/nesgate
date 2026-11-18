@@ -1,6 +1,6 @@
 // Properties of the bus multiplexer, for every possible input at one
-// instant. The netlist is 2-state, so an undriven ('Z') driver bit can't be
-// told apart from a driven 1: both read as 1 here.
+// instant. Each drive_* input is every driver of that bus already ANDed
+// together by the datapath, so a 1 means nothing pulls that bit low.
 //
 // The model is written in terms of what pulls each bit low. A bit of a bus
 // reads 0 exactly when something on the node it belongs to pulls it low:
@@ -11,10 +11,6 @@ module bus_multiplexer_formal (
     input [7:0] drive_db,
     input [7:0] drive_adh,
     input [7:0] drive_adl,
-    input [7:0] external_sb,
-    input [7:0] external_db,
-    input [7:0] external_adh,
-    input [7:0] external_adl,
     input sb_db,
     input sb_adh,
     input zero_adl0,
@@ -33,10 +29,6 @@ module bus_multiplexer_formal (
         .drive_DB(drive_db),
         .drive_ADH(drive_adh),
         .drive_ADL(drive_adl),
-        .external_SB(external_sb),
-        .external_DB(external_db),
-        .external_ADH(external_adh),
-        .external_ADL(external_adl),
         .connect_SB_DB(sb_db),
         .connect_SB_ADH(sb_adh),
         .clear_0_ADL0(zero_adl0),
@@ -51,12 +43,10 @@ module bus_multiplexer_formal (
     );
 
     // The bits each bus's own drivers and open drain MOSFETs pull low
-    wire [7:0] low_sb = ~drive_sb | ~external_sb;
-    wire [7:0] low_db = ~drive_db | ~external_db;
-    wire [7:0] low_adh = ~drive_adh | ~external_adh
-        | {{7{zero_adh_1_7}}, zero_adh0};
-    wire [7:0] low_adl = ~drive_adl | ~external_adl
-        | {5'b0, zero_adl2, zero_adl1, zero_adl0};
+    wire [7:0] low_sb = ~drive_sb;
+    wire [7:0] low_db = ~drive_db;
+    wire [7:0] low_adh = ~drive_adh | {{7{zero_adh_1_7}}, zero_adh0};
+    wire [7:0] low_adl = ~drive_adl | {5'b0, zero_adl2, zero_adl1, zero_adl0};
     // The bits pulled low anywhere on the node SB belongs to
     wire [7:0] low_sb_node = low_sb
         | (sb_db ? low_db : 8'b0)
@@ -73,7 +63,7 @@ module bus_multiplexer_formal (
         if (sb_db) check_sb_db_joined: assert (bus_db == bus_sb);
         if (sb_adh) check_sb_adh_joined: assert (bus_adh == bus_sb);
         // Nothing reaches ADL from another bus
-        check_adl_isolated: assert (bus_adl == (drive_adl & external_adl
+        check_adl_isolated: assert (bus_adl == (drive_adl
             & {5'h1f, ~zero_adl2, ~zero_adl1, ~zero_adl0}));
 
         // Every bus idle: all precharged
@@ -81,19 +71,15 @@ module bus_multiplexer_formal (
             && bus_adh == 8'hff && bus_adl == 8'hff && !sb_db && !sb_adh);
         // The open drain MOSFETs alone form the low byte of the NMI vector
         // (0xFFFA) and a zero page high byte
-        reach_nmi_vector: cover (drive_adl == 8'hff && external_adl == 8'hff
-            && bus_adl == 8'hfa);
-        reach_zero_page: cover (drive_adh == 8'hff && external_adh == 8'hff
-            && !sb_adh && bus_adh == 8'h00);
+        reach_nmi_vector: cover (drive_adl == 8'hff && bus_adl == 8'hfa);
+        reach_zero_page: cover (drive_adh == 8'hff && !sb_adh
+            && bus_adh == 8'h00);
         // Something on DB pulls SB low through SB/DB
         reach_db_into_sb: cover (sb_db && !sb_adh && low_sb == 8'b0
             && bus_sb != 8'hff);
         // ADH pulls DB low through SB, with both pass MOSFETs on
         reach_adh_into_db: cover (sb_db && sb_adh && low_sb == 8'b0
             && low_db == 8'b0 && bus_db != 8'hff);
-        // An internal and an external driver wired-AND together
-        reach_wired_and: cover (!sb_db && !sb_adh && drive_sb == 8'hf0
-            && external_sb == 8'h3c && bus_sb == 8'h30);
         // DB stays apart from SB while SB/DB is off
         reach_isolated: cover (!sb_db && bus_db != bus_sb);
     end

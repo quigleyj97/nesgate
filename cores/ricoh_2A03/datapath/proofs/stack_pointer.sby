@@ -15,12 +15,8 @@ cover: smtbmc z3
 read_verilog stack_pointer.v
 read_verilog -formal -sv stack_pointer_formal.sv
 prep -top stack_pointer_formal
-flatten
-tribuf -merge
-techmap -map precharge_tribuf.v
 check -assert
 
 [files]
 formal/stack_pointer.v
 ../cores/ricoh_2A03/datapath/proofs/stack_pointer_formal.sv
-../techmaps/precharge_tribuf.v

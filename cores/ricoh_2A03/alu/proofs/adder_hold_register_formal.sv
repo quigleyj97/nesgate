@@ -1,8 +1,7 @@
 // Properties of the adder hold register, checked on every metaclock edge. It
 // takes data_in on each edge while load (Phi2) is high, and holds otherwise.
 //
-// The tri-state ports go through the same precharge techmap as synthesis
-// (see techmaps/precharge_tribuf.v), so a disabled port reads all ones.
+// A disabled port drives all ones, releasing the precharged bus.
 module adder_hold_register_formal (
     input metaclock,
     input load,

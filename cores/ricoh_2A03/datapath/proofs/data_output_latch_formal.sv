@@ -1,6 +1,5 @@
 // Properties of the data output register, checked on every metaclock edge.
-// The data pins go through the same precharge techmap as synthesis (see
-// techmaps/precharge_tribuf.v), so released pins read all ones.
+// Released data pins read all ones.
 module data_output_latch_formal (
     input metaclock,
     input phi1,

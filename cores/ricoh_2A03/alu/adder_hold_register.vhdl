@@ -21,11 +21,12 @@ entity adder_hold_register is
         sb_bus_enable_ADD_SB_0_6: in std_ulogic;
         --! @ref Ricoh2A03_ADD_SB_7
         sb_bus_enable_ADD_SB_7: in std_ulogic;
-        --! Port for the SB bus of the MOS 6502
+        --! Drives @ref Ricoh_2A03_SB, all ones (released) on the bits that
+        --! aren't enabled
         sb_bus_port: out std_ulogic_vector(7 downto 0);
         --! @ref Ricoh2A03_ADD_ADL
         adl_bus_enable_ADD_ADL: in std_ulogic;
-        --! Port for the ADL bus of the MOS 6502
+        --! Drives @ref Ricoh_2A03_ADL, all ones (released) when not enabled
         adl_bus_port: out std_ulogic_vector(7 downto 0);
         --! @ref metaclock
         metaclock: in std_ulogic
@@ -44,7 +45,7 @@ begin
         end if;
     end process;
 
-    sb_bus_port(6 downto 0) <= register_data(6 downto 0) when sb_bus_enable_ADD_SB_0_6 = '1' else (others => 'Z');
-    sb_bus_port(7) <= register_data(7) when sb_bus_enable_ADD_SB_7 = '1' else 'Z';
-    adl_bus_port <= register_data when adl_bus_enable_ADD_ADL = '1' else (others => 'Z');
+    sb_bus_port(6 downto 0) <= register_data(6 downto 0) when sb_bus_enable_ADD_SB_0_6 = '1' else (others => '1');
+    sb_bus_port(7) <= register_data(7) when sb_bus_enable_ADD_SB_7 = '1' else '1';
+    adl_bus_port <= register_data when adl_bus_enable_ADD_ADL = '1' else (others => '1');
 end architecture;

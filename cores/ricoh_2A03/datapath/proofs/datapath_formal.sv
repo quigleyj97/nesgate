@@ -13,16 +13,12 @@
 // netlist's registers. The registers that aren't outputs are checked through
 // the buses they drive.
 //
-// At most one register in the datapath drives each bus at a time. The
-// synthesized netlist merges a bus's drivers into one mux that ORs them
-// together when several are enabled, not the wired-AND the model (and the
-// real chip) gives, so the proof assumes the random logic never does that.
-// Drivers from outside the datapath (drive_*) are wired-AND with them through
-// the bus multiplexer, as on the real chip, and aren't restricted.
+// Any number of drivers can be enabled on a bus at once, inside the datapath
+// or outside it (drive_*): the bus reads their wired-AND, as on the real chip.
+// Unofficial opcodes like SBX rely on this.
 //
-// The design is flattened, and each bus's tri-state drivers merged and mapped
-// with the same passes as synthesis (see techmaps/precharge_tribuf.v), so an
-// undriven bus reads all ones.
+// Every subunit drives all ones while it isn't enabled, and the datapath ANDs
+// each bus's drivers together, so an undriven bus reads all ones.
 module datapath_formal (
     input metaclock,
     input phi1,
@@ -330,11 +326,6 @@ module datapath_formal (
             assume_power_up: assume (!metaclock && !phi2);
         end
 
-        assume_one_sb_driver: assume ($onehot0({ac_sb, x_sb, y_sb, s_sb}));
-        assume_one_db_driver: assume ($onehot0({ac_db, p_db, dl_db, pcl_db, pch_db}));
-        assume_one_adh_driver: assume ($onehot0({dl_adh, pch_adh}));
-        assume_one_adl_driver: assume ($onehot0({s_adl, dl_adl, pcl_adl}));
-
         check_sb: assert (bus_sb == f_sb);
         check_db: assert (bus_db == f_db);
         check_adh: assert (bus_adh == f_adh);
@@ -365,5 +356,9 @@ module datapath_formal (
         // An ALU result on SB, through SB/ADH onto ADH
         reach_sb_adh: cover (sb_adh && !sb_db && drive_adh == 8'hff
             && !dl_adh && !pch_adh && bus_adh == 8'h42 && drive_sb == 8'h42);
+        // A and X on SB at once read their wired-AND, as SBX needs
+        reach_two_drivers: cover (ac_sb && x_sb && !y_sb && !s_sb && !sb_db
+            && !sb_adh && drive_sb == 8'hff && f_ac == 8'hf0 && f_x == 8'h3c
+            && bus_sb == 8'h30);
     end
 endmodule

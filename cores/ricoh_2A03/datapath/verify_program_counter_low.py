@@ -68,8 +68,8 @@ async def test_program_counter_low_reset(dut: "DUT"):
     """Test that program counter starts at zero after initialization"""
     await setup(dut)
     await phi2(dut)
-    assert not dut.bus_DB.value.is_resolvable, "DB should be open"
-    assert not dut.bus_ADL_out.value.is_resolvable, "ADL should be open"
+    assert dut.bus_DB.value == 0xFF, "DB should be released (all ones)"
+    assert dut.bus_ADL_out.value == 0xFF, "ADL should be released (all ones)"
     assert await read_db(dut) == 0
 
 
@@ -104,7 +104,7 @@ async def test_program_counter_output_to_buses(dut: "DUT"):
     dut.signal_PCL_ADL.value = 1
     await Timer(1, unit="ps")
     assert dut.bus_ADL_out.value == 0xA5, f"Expected ADL to be 0xA5, got {dut.bus_ADL_out.value}"
-    assert not dut.bus_DB.value.is_resolvable, "DB should be open"
+    assert dut.bus_DB.value == 0xFF, "DB should be released (all ones)"
 
 
 @cocotb.test()

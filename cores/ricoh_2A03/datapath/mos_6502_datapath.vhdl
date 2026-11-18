@@ -3,12 +3,13 @@
 --! accumulator and index registers, the address registers, the program
 --! counter, the stack pointer, the status register, and the bus multiplexer.
 --! @details The internal buses (SB, DB, ADH, ADL) are driven by several
---! subunits at once, each releasing the bus to 'Z' when it isn't enabled.
---! Each bus has a resolved std_logic_vector driver signal (drivers_*) that
---! every subunit driving it is connected to, converting its std_ulogic_vector
---! port at the port map. The @ref bus_multiplexer then resolves the drivers
---! into the bus values (bus_*) that every subunit reads, applying the
---! precharge, the open drain MOSFETs and the pass MOSFETs.
+--! subunits at once, each driving all ones (the precharge level) when it isn't
+--! enabled. Each subunit drives its own signal for each bus (e.g. `AC_DB`),
+--! and every bus's drivers, including the ones from outside the datapath
+--! (drive_*), are ANDed together, the same wired-AND as the real chip's
+--! precharged buses. The @ref bus_multiplexer then applies the open drain
+--! MOSFETs and the pass MOSFETs to give the bus values (bus_*) that every
+--! subunit reads.
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -20,7 +21,7 @@ entity mos_6502_datapath is
         --! tri-states, so they're split into `data_in` and `data_out`.
         data_in: in std_ulogic_vector(7 downto 0);
         --! The external-facing data pins, as driven by the data output
-        --! register. 'Z' unless writing (`R/W` low) during Phi2, when the real
+        --! register. All ones unless writing (`R/W` low) during Phi2; the real
         --! pins would be released.
         data_out: out std_ulogic_vector(7 downto 0);
         --! The external-facing address pins
@@ -34,16 +35,16 @@ entity mos_6502_datapath is
 
         -- #region Buses
         --! Drives @ref Ricoh_2A03_SB from outside the datapath (e.g. the
-        --! ALU's adder hold register), 'Z' when not driving
+        --! ALU's adder hold register), all ones when not driving
         drive_SB: in std_ulogic_vector(7 downto 0);
-        --! Drives @ref Ricoh_2A03_DB from outside the datapath, 'Z' when not
-        --! driving
+        --! Drives @ref Ricoh_2A03_DB from outside the datapath, all ones when
+        --! not driving
         drive_DB: in std_ulogic_vector(7 downto 0);
-        --! Drives @ref Ricoh_2A03_ADH from outside the datapath, 'Z' when not
-        --! driving
+        --! Drives @ref Ricoh_2A03_ADH from outside the datapath, all ones
+        --! when not driving
         drive_ADH: in std_ulogic_vector(7 downto 0);
         --! Drives @ref Ricoh_2A03_ADL from outside the datapath (e.g. the
-        --! ALU's adder hold register), 'Z' when not driving
+        --! ALU's adder hold register), all ones when not driving
         drive_ADL: in std_ulogic_vector(7 downto 0);
         --! @ref Ricoh_2A03_SB, as resolved by @ref bus_multiplexer
         databus_SB: out std_ulogic_vector(7 downto 0);
@@ -203,10 +204,6 @@ architecture rtl of mos_6502_datapath is
             drive_DB: in std_ulogic_vector(7 downto 0);
             drive_ADH: in std_ulogic_vector(7 downto 0);
             drive_ADL: in std_ulogic_vector(7 downto 0);
-            external_SB: in std_ulogic_vector(7 downto 0);
-            external_DB: in std_ulogic_vector(7 downto 0);
-            external_ADH: in std_ulogic_vector(7 downto 0);
-            external_ADL: in std_ulogic_vector(7 downto 0);
             connect_SB_DB: in std_ulogic;
             connect_SB_ADH: in std_ulogic;
             clear_0_ADL0: in std_ulogic;
@@ -351,12 +348,17 @@ architecture rtl of mos_6502_datapath is
     for PCH: program_counter_high use entity work.program_counter_high;
 
     -- #region Buses
-    --! Everything driving each bus. These have several drivers, so they're
-    --! resolved std_logic_vectors.
-    signal drivers_SB: std_logic_vector(7 downto 0);
-    signal drivers_DB: std_logic_vector(7 downto 0);
-    signal drivers_ADH: std_logic_vector(7 downto 0);
-    signal drivers_ADL: std_logic_vector(7 downto 0);
+    --! What each subunit drives onto each bus: its value while enabled, and
+    --! all ones otherwise
+    signal AC_SB, X_SB, Y_SB, S_SB: std_ulogic_vector(7 downto 0);
+    signal AC_DB, P_DB, DL_DB, PCL_DB, PCH_DB: std_ulogic_vector(7 downto 0);
+    signal DL_ADH, PCH_ADH: std_ulogic_vector(7 downto 0);
+    signal S_ADL, DL_ADL, PCL_ADL: std_ulogic_vector(7 downto 0);
+    --! Every driver of each bus, ANDed together (the wired-AND)
+    signal drivers_SB: std_ulogic_vector(7 downto 0);
+    signal drivers_DB: std_ulogic_vector(7 downto 0);
+    signal drivers_ADH: std_ulogic_vector(7 downto 0);
+    signal drivers_ADL: std_ulogic_vector(7 downto 0);
     --! The value of each bus, as resolved by the bus multiplexer
     signal bus_SB: std_ulogic_vector(7 downto 0);
     signal bus_DB: std_ulogic_vector(7 downto 0);
@@ -379,16 +381,17 @@ architecture rtl of mos_6502_datapath is
     signal signal_PCLC: std_ulogic;
 begin
     -- #region Buses
+    drivers_SB <= AC_SB and X_SB and Y_SB and S_SB and drive_SB;
+    drivers_DB <= AC_DB and P_DB and DL_DB and PCL_DB and PCH_DB and drive_DB;
+    drivers_ADH <= DL_ADH and PCH_ADH and drive_ADH;
+    drivers_ADL <= S_ADL and DL_ADL and PCL_ADL and drive_ADL;
+
     MUX: bus_multiplexer
         port map(
-            drive_SB => std_ulogic_vector(drivers_SB),
-            drive_DB => std_ulogic_vector(drivers_DB),
-            drive_ADH => std_ulogic_vector(drivers_ADH),
-            drive_ADL => std_ulogic_vector(drivers_ADL),
-            external_SB => drive_SB,
-            external_DB => drive_DB,
-            external_ADH => drive_ADH,
-            external_ADL => drive_ADL,
+            drive_SB => drivers_SB,
+            drive_DB => drivers_DB,
+            drive_ADH => drivers_ADH,
+            drive_ADL => drivers_ADL,
             connect_SB_DB => connect_SB_DB,
             connect_SB_ADH => connect_SB_ADH,
             clear_0_ADL0 => clear_0_ADL0,
@@ -411,8 +414,8 @@ begin
     ACC: accumulator
         port map(
             databus_SB_in => bus_SB,
-            std_logic_vector(databus_SB_out) => drivers_SB,
-            std_logic_vector(databus_DB) => drivers_DB,
+            databus_SB_out => AC_SB,
+            databus_DB => AC_DB,
             load_SB_AC => load_SB_AC,
             output_enable_AC_SB => output_enable_AC_SB,
             output_enable_AC_DB => output_enable_AC_DB,
@@ -422,7 +425,7 @@ begin
         port map(
             data_in => bus_SB,
             load => load_SB_X,
-            std_logic_vector(data_out) => drivers_SB,
+            data_out => X_SB,
             output_enable => output_enable_X_SB,
             metaclock => metaclock
         );
@@ -430,7 +433,7 @@ begin
         port map(
             data_in => bus_SB,
             load => load_SB_Y,
-            std_logic_vector(data_out) => drivers_SB,
+            data_out => Y_SB,
             output_enable => output_enable_Y_SB,
             metaclock => metaclock
         );
@@ -441,15 +444,15 @@ begin
             signal_S_ADL => output_enable_S_ADL,
             signal_SB_S => load_SB_S,
             bus_SB_in => bus_SB,
-            std_logic_vector(bus_SB_out) => drivers_SB,
-            std_logic_vector(bus_ADL) => drivers_ADL,
+            bus_SB_out => S_SB,
+            bus_ADL => S_ADL,
             metaclock => metaclock
         );
     P_REG: status_register
         port map(
             phi1 => phi1,
             db_bus_in => bus_DB,
-            std_logic_vector(db_bus_out) => drivers_DB,
+            db_bus_out => P_DB,
             enable_P_DB => output_enable_P_DB,
             signal_IR5 => signal_IR5,
             signal_ACR => signal_ACR,
@@ -501,11 +504,11 @@ begin
             load => phi2,
             data_in => data_in,
             db_bus_enable_DL_DB => output_enable_DL_DB,
-            std_logic_vector(db_bus_port) => drivers_DB,
+            db_bus_port => DL_DB,
             adh_bus_enable_DL_ADH => output_enable_DL_ADH,
-            std_logic_vector(adh_bus_port) => drivers_ADH,
+            adh_bus_port => DL_ADH,
             adl_bus_enable_DL_ADL => output_enable_DL_ADL,
-            std_logic_vector(adl_bus_port) => drivers_ADL,
+            adl_bus_port => DL_ADL,
             metaclock => metaclock
         );
     DOR: data_output_latch
@@ -530,8 +533,8 @@ begin
             signal_ADL_PCL => load_PCLS_from_ADL,
             signal_PCLC => signal_PCLC,
             bus_ADL_in => bus_ADL,
-            std_logic_vector(bus_ADL_out) => drivers_ADL,
-            std_logic_vector(bus_DB) => drivers_DB,
+            bus_ADL_out => PCL_ADL,
+            bus_DB => PCL_DB,
             metaclock => metaclock
         );
     load_PCHS_from_PCH <= load_PCH_PCH and phi1;
@@ -545,8 +548,8 @@ begin
             signal_PCH_PCH => load_PCHS_from_PCH,
             signal_ADH_PCH => load_PCHS_from_ADH,
             bus_ADH_in => bus_ADH,
-            std_logic_vector(bus_ADH_out) => drivers_ADH,
-            std_logic_vector(bus_DB) => drivers_DB,
+            bus_ADH_out => PCH_ADH,
+            bus_DB => PCH_DB,
             metaclock => metaclock
         );
 end architecture;

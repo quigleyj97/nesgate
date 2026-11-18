@@ -15,12 +15,8 @@ cover: smtbmc z3
 read_verilog data_input_latch.v
 read_verilog -formal -sv data_input_latch_formal.sv
 prep -top data_input_latch_formal
-flatten
-tribuf -merge
-techmap -map precharge_tribuf.v
 check -assert
 
 [files]
 formal/data_input_latch.v
 ../cores/ricoh_2A03/datapath/proofs/data_input_latch_formal.sv
-../techmaps/precharge_tribuf.v

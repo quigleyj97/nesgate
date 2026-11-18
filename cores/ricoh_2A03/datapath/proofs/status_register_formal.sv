@@ -1,6 +1,5 @@
 // Properties of the status register (P), checked on every metaclock edge.
-// The DB port goes through the same precharge techmap as synthesis (see
-// techmaps/precharge_tribuf.v), so a disabled port reads all ones.
+// A disabled DB port drives all ones, releasing the bus.
 //
 // The model loads each flag from its one selected source while Phi1 is high,
 // and holds it when no source, or more than one, is selected (the random

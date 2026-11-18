@@ -644,3 +644,481 @@ async def test_nmi(dut: "DUT"):
 
 
 # endregion
+
+
+# region Unofficial opcodes
+
+
+@cocotb.test()
+async def test_sax(dut: "DUT"):
+    """SAX stores A AND X. It isn't an AND in the ALU: the opcode matches the
+    decoder lines of both STA and STX, so A and X drive the bus at once, and
+    the precharged bus reads the wired-AND of the two. A and X are left
+    unchanged, as are the flags."""
+    cpu = await boot(dut, [
+        0xA9, 0xF0,         # 8000 LDA #$F0
+        0xA2, 0x3C,         # 8002 LDX #$3C
+        0x87, 0x10,         # 8004 SAX $10    -> $30
+        0x8F, 0x00, 0x02,   # 8006 SAX $0200  -> $30
+        0x8D, 0x01, 0x02,   # 8009 STA $0201
+        0x8E, 0x02, 0x02,   # 800C STX $0202
+        *jmp_self(0x800F),  # 800F JMP *
+    ])
+    assert_trace(await cpu.cycles(11), [
+        fetch(0x8000, 0xA9),
+        read(0x8001, 0xF0),
+        fetch(0x8002, 0xA2),
+        read(0x8003, 0x3C),
+        fetch(0x8004, 0x87),
+        read(0x8005, 0x10),
+        write(0x0010, 0x30),
+        fetch(0x8006, 0x8F),
+        read(0x8007, 0x00),
+        read(0x8008, 0x02),
+        write(0x0200, 0x30),
+    ])
+    await run_to_end(cpu, 0x800F)
+    assert results(cpu, 3) == [0x30, 0xF0, 0x3C]
+
+
+@cocotb.test()
+async def test_sbx(dut: "DUT"):
+    """SBX (also called AXS) sets X to (A AND X) minus the operand, without
+    borrow, and sets N, Z and C like CMP. The opcode matches the decoder lines
+    of both CMP and DEX, so A and X drive SB into the ALU at once, and SB
+    reads the wired-AND of the two. A is left unchanged."""
+    cpu = await boot(dut, [
+        0xA9, 0xF0,         # 8000 LDA #$F0
+        0xA2, 0x3C,         # 8002 LDX #$3C
+        0xCB, 0x10,         # 8004 SBX #$10   -> X = $30 - $10 = $20, C set
+        0x08,               # 8006 PHP
+        0x8E, 0x00, 0x02,   # 8007 STX $0200
+        0x8D, 0x01, 0x02,   # 800A STA $0201
+        0x68,               # 800D PLA
+        0x8D, 0x02, 0x02,   # 800E STA $0202
+        *jmp_self(0x8011),  # 8011 JMP *
+    ])
+    await run_to_end(cpu, 0x8011)
+    # I is still set from the reset
+    #                                    NV1BDIZC
+    assert results(cpu, 3) == [0x20, 0xF0, 0b00110101]
+
+
+def assemble(*instructions: list[int]) -> tuple[list[int], int]:
+    """Lay out instructions from ORIGIN, followed by a final `JMP *`.
+
+    Returns the program and the address of the `JMP *`, for `run_to_end`.
+    """
+    code = [byte for instruction in instructions for byte in instruction]
+    end = ORIGIN + len(code)
+    return code + jmp_self(end), end
+
+
+def store_flags(address: int) -> list[int]:
+    """`PHP`, `PLA`, `STA address`: store P as pushed. Overwrites A."""
+    return [0x08, 0x68, 0x8D, address & 0xFF, address >> 8]
+
+
+def pushed_p(n: bool = False, v: bool = False, z: bool = False, c: bool = False) -> int:
+    """P as PHP pushes it: bits 5 (always 1) and 4 (B) set, D clear, and I
+    set, as it still is from the reset."""
+    return 0b0011_0100 | n << 7 | v << 6 | z << 1 | c
+
+
+#: CLD, CLV, CLC: clear the flags a test doesn't set itself, since the tests
+#: share a simulation and start with whatever the last one left
+CLEAR_FLAGS = [[0xD8], [0xB8], [0x18]]
+
+
+@cocotb.test()
+async def test_lax(dut: "DUT"):
+    """LAX loads A and X from memory at once, setting N and Z, in all six
+    stable addressing modes."""
+    program, end = assemble(
+        *CLEAR_FLAGS,
+        [0xA0, 0x01],           # LDY #$01
+        [0xA7, 0x10],           # LAX $10        -> $8F
+        [0x8D, 0x00, 0x02],     # STA $0200
+        [0x8E, 0x01, 0x02],     # STX $0201
+        store_flags(0x0202),
+        [0xB7, 0x10],           # LAX $10,Y      -> $00
+        [0x8E, 0x03, 0x02],     # STX $0203
+        store_flags(0x0204),
+        [0xAF, 0x00, 0x03],     # LAX $0300      -> $42
+        [0x8D, 0x05, 0x02],     # STA $0205
+        [0xA0, 0x05],           # LDY #$05
+        [0xBF, 0x00, 0x03],     # LAX $0300,Y    -> $5A
+        [0x8E, 0x06, 0x02],     # STX $0206
+        [0xA2, 0x02],           # LDX #$02
+        [0xA3, 0x1E],           # LAX ($1E,X)    -> $81
+        [0x8D, 0x07, 0x02],     # STA $0207
+        [0xA0, 0x03],           # LDY #$03
+        [0xB3, 0x30],           # LAX ($30),Y    -> $7E
+        [0x8E, 0x08, 0x02],     # STX $0208
+        [0x8D, 0x09, 0x02],     # STA $0209
+    )
+    cpu = await boot(dut, program)
+    cpu.load(0x0010, [0x8F, 0x00])
+    cpu.load(0x0020, [0x10, 0x03])
+    cpu.load(0x0030, [0x20, 0x03])
+    cpu.memory[0x0300] = 0x42
+    cpu.memory[0x0305] = 0x5A
+    cpu.memory[0x0310] = 0x81
+    cpu.memory[0x0323] = 0x7E
+    await run_to_end(cpu, end)
+    assert results(cpu, 10) == [
+        0x8F, 0x8F, pushed_p(n=True),
+        0x00, pushed_p(z=True),
+        0x42, 0x5A, 0x81, 0x7E, 0x7E,
+    ]
+
+
+@cocotb.test()
+async def test_dcp(dut: "DUT"):
+    """DCP decrements memory, then compares A with the result, like DEC then
+    CMP."""
+    program, end = assemble(
+        *CLEAR_FLAGS,
+        [0xA9, 0x40],           # LDA #$40
+        [0xC7, 0x10],           # DCP $10        $41 -> $40, equal
+        store_flags(0x0200),
+        [0xA9, 0x40],           # LDA #$40
+        [0xA2, 0x02],           # LDX #$02
+        [0xDF, 0x00, 0x03],     # DCP $0300,X    $00 -> $FF, A < M
+        store_flags(0x0201),
+        [0xA9, 0x40],           # LDA #$40
+        [0xA0, 0x01],           # LDY #$01
+        [0xD3, 0x30],           # DCP ($30),Y    $80 -> $7F, A - M negative
+        store_flags(0x0202),
+        [0xA9, 0x40],           # LDA #$40
+        [0xD7, 0x0E],           # DCP $0E,X      $40 -> $3F, A > M
+        store_flags(0x0203),
+    )
+    cpu = await boot(dut, program)
+    cpu.memory[0x0010] = 0x41
+    cpu.load(0x0030, [0x20, 0x03])
+    cpu.memory[0x0302] = 0x00
+    cpu.memory[0x0321] = 0x80
+    await run_to_end(cpu, end)
+    # $10 is decremented by both DCP $10 and DCP $0E,X
+    assert (results(cpu, 4), [cpu.memory[0x0010], cpu.memory[0x0302], cpu.memory[0x0321]]) == (
+        [pushed_p(z=True, c=True), pushed_p(), pushed_p(n=True), pushed_p(c=True)],
+        [0x3F, 0xFF, 0x7F],
+    )
+
+
+@cocotb.test()
+async def test_isb(dut: "DUT"):
+    """ISB (also called ISC) increments memory, then subtracts the result from
+    A with borrow, like INC then SBC."""
+    program, end = assemble(
+        *CLEAR_FLAGS,
+        [0x38],                 # SEC
+        [0xA9, 0x50],           # LDA #$50
+        [0xE7, 0x10],           # ISB $10        $0F -> $10, A = $40
+        [0x8D, 0x00, 0x02],     # STA $0200
+        store_flags(0x0201),
+        [0xA9, 0x80],           # LDA #$80
+        [0x38],                 # SEC
+        [0xA2, 0x02],           # LDX #$02
+        [0xFF, 0x00, 0x03],     # ISB $0300,X    $00 -> $01, A = $7F, overflow
+        [0x8D, 0x02, 0x02],     # STA $0202
+        store_flags(0x0203),
+        [0x18],                 # CLC
+        [0xA9, 0x10],           # LDA #$10
+        [0xE3, 0x1E],           # ISB ($1E,X)    $0F -> $10, A = $FF, borrow
+        [0x8D, 0x04, 0x02],     # STA $0204
+        store_flags(0x0205),
+    )
+    cpu = await boot(dut, program)
+    cpu.memory[0x0010] = 0x0F
+    cpu.load(0x0020, [0x10, 0x03])
+    cpu.memory[0x0302] = 0x00
+    cpu.memory[0x0310] = 0x0F
+    await run_to_end(cpu, end)
+    assert (results(cpu, 6), [cpu.memory[0x0010], cpu.memory[0x0302], cpu.memory[0x0310]]) == (
+        [0x40, pushed_p(c=True),
+        0x7F, pushed_p(v=True, c=True),
+        0xFF, pushed_p(n=True)],
+        [0x10, 0x01, 0x10],
+    )
+
+
+@cocotb.test()
+async def test_slo(dut: "DUT"):
+    """SLO shifts memory left, then ORs the result into A, like ASL then ORA.
+    C is the bit shifted out."""
+    program, end = assemble(
+        *CLEAR_FLAGS,
+        [0xA9, 0x01],           # LDA #$01
+        [0x07, 0x10],           # SLO $10        $81 -> $02, A = $03
+        [0x8D, 0x00, 0x02],     # STA $0200
+        store_flags(0x0201),
+        [0xA9, 0x00],           # LDA #$00
+        [0xA0, 0x05],           # LDY #$05
+        [0x1B, 0x00, 0x03],     # SLO $0300,Y    $40 -> $80, A = $80
+        [0x8D, 0x02, 0x02],     # STA $0202
+        store_flags(0x0203),
+        [0xA9, 0x00],           # LDA #$00
+        [0xA2, 0x02],           # LDX #$02
+        [0x17, 0x14],           # SLO $14,X      $00 -> $00, A = $00
+        [0x8D, 0x04, 0x02],     # STA $0204
+        store_flags(0x0205),
+    )
+    cpu = await boot(dut, program)
+    cpu.memory[0x0010] = 0x81
+    cpu.memory[0x0016] = 0x00
+    cpu.memory[0x0305] = 0x40
+    await run_to_end(cpu, end)
+    assert (results(cpu, 6), [cpu.memory[0x0010], cpu.memory[0x0305]]) == (
+        [0x03, pushed_p(c=True),
+        0x80, pushed_p(n=True),
+        0x00, pushed_p(z=True)],
+        [0x02, 0x80],
+    )
+
+
+@cocotb.test()
+async def test_rla(dut: "DUT"):
+    """RLA rotates memory left through C, then ANDs the result into A, like
+    ROL then AND."""
+    program, end = assemble(
+        *CLEAR_FLAGS,
+        [0x38],                 # SEC
+        [0xA9, 0xFF],           # LDA #$FF
+        [0x27, 0x10],           # RLA $10        $40 -> $81, A = $81
+        [0x8D, 0x00, 0x02],     # STA $0200
+        store_flags(0x0201),
+        [0x18],                 # CLC
+        [0xA9, 0x0F],           # LDA #$0F
+        [0x2F, 0x00, 0x03],     # RLA $0300      $88 -> $10, A = $00
+        [0x8D, 0x02, 0x02],     # STA $0202
+        store_flags(0x0203),
+        [0x18],                 # CLC
+        [0xA9, 0xFF],           # LDA #$FF
+        [0xA0, 0x01],           # LDY #$01
+        [0x33, 0x30],           # RLA ($30),Y    $01 -> $02, A = $02
+        [0x8D, 0x04, 0x02],     # STA $0204
+        store_flags(0x0205),
+    )
+    cpu = await boot(dut, program)
+    cpu.memory[0x0010] = 0x40
+    cpu.load(0x0030, [0x20, 0x03])
+    cpu.memory[0x0300] = 0x88
+    cpu.memory[0x0321] = 0x01
+    await run_to_end(cpu, end)
+    assert (results(cpu, 6), [cpu.memory[0x0010], cpu.memory[0x0300], cpu.memory[0x0321]]) == (
+        [0x81, pushed_p(n=True),
+        0x00, pushed_p(z=True, c=True),
+        0x02, pushed_p()],
+        [0x81, 0x10, 0x02],
+    )
+
+
+@cocotb.test()
+async def test_sre(dut: "DUT"):
+    """SRE shifts memory right, then EORs the result into A, like LSR then
+    EOR. C is the bit shifted out."""
+    program, end = assemble(
+        *CLEAR_FLAGS,
+        [0xA9, 0xF0],           # LDA #$F0
+        [0x47, 0x10],           # SRE $10        $03 -> $01, A = $F1
+        [0x8D, 0x00, 0x02],     # STA $0200
+        store_flags(0x0201),
+        [0xA9, 0x01],           # LDA #$01
+        [0xA2, 0x02],           # LDX #$02
+        [0x5F, 0x00, 0x03],     # SRE $0300,X    $02 -> $01, A = $00
+        [0x8D, 0x02, 0x02],     # STA $0202
+        store_flags(0x0203),
+        [0xA9, 0x80],           # LDA #$80
+        [0x43, 0x1E],           # SRE ($1E,X)    $81 -> $40, A = $C0
+        [0x8D, 0x04, 0x02],     # STA $0204
+        store_flags(0x0205),
+    )
+    cpu = await boot(dut, program)
+    cpu.memory[0x0010] = 0x03
+    cpu.load(0x0020, [0x10, 0x03])
+    cpu.memory[0x0302] = 0x02
+    cpu.memory[0x0310] = 0x81
+    await run_to_end(cpu, end)
+    assert (results(cpu, 6), [cpu.memory[0x0010], cpu.memory[0x0302], cpu.memory[0x0310]]) == (
+        [0xF1, pushed_p(n=True, c=True),
+        0x00, pushed_p(z=True),
+        0xC0, pushed_p(n=True, c=True)],
+        [0x01, 0x01, 0x40],
+    )
+
+
+@cocotb.test()
+async def test_rra(dut: "DUT"):
+    """RRA rotates memory right through C, then adds the result to A with the
+    carry the rotate shifted out, like ROR then ADC."""
+    program, end = assemble(
+        *CLEAR_FLAGS,
+        [0x18],                 # CLC
+        [0xA9, 0x10],           # LDA #$10
+        [0x67, 0x10],           # RRA $10        $03 -> $01 (C=1), A = $12
+        [0x8D, 0x00, 0x02],     # STA $0200
+        store_flags(0x0201),
+        [0x18],                 # CLC
+        [0xA9, 0x40],           # LDA #$40
+        [0xA0, 0x02],           # LDY #$02
+        [0x7B, 0x00, 0x03],     # RRA $0300,Y    $80 -> $40 (C=0), A = $80, overflow
+        [0x8D, 0x02, 0x02],     # STA $0202
+        store_flags(0x0203),
+        [0x38],                 # SEC
+        [0xA9, 0xFF],           # LDA #$FF
+        [0xA2, 0x02],           # LDX #$02
+        [0x77, 0x14],           # RRA $14,X      $00 -> $80 (C=0), A = $7F, overflow
+        [0x8D, 0x04, 0x02],     # STA $0204
+        store_flags(0x0205),
+    )
+    cpu = await boot(dut, program)
+    cpu.memory[0x0010] = 0x03
+    cpu.memory[0x0016] = 0x00
+    cpu.memory[0x0302] = 0x80
+    await run_to_end(cpu, end)
+    assert (results(cpu, 6), [cpu.memory[0x0010], cpu.memory[0x0302], cpu.memory[0x0016]]) == (
+        [0x12, pushed_p(),
+        0x80, pushed_p(n=True, v=True),
+        0x7F, pushed_p(v=True, c=True)],
+        [0x01, 0x40, 0x80],
+    )
+
+
+@cocotb.test()
+async def test_unofficial_read_modify_write_timing(dut: "DUT"):
+    """The unofficial read-modify-write instructions take the same cycles as
+    the official ones: they write the old value back before the new one, and
+    indexed modes always read the address before the carry is fixed."""
+    cpu = await boot(dut, [
+        0x07, 0x10,         # 8000 SLO $10
+        0xA2, 0x01,         # 8002 LDX #$01
+        0xDF, 0xFF, 0x02,   # 8004 DCP $02FF,X (page cross)
+        0xA0, 0x01,         # 8007 LDY #$01
+        0xF3, 0x30,         # 8009 ISB ($30),Y (page cross)
+        *jmp_self(0x800B),  # 800B JMP *
+    ])
+    cpu.memory[0x0010] = 0x81
+    cpu.load(0x0030, [0xFF, 0x03])
+    cpu.memory[0x0300] = 0x05
+    cpu.memory[0x0400] = 0x09
+    assert_trace(await cpu.cycles(25), [
+        fetch(0x8000, 0x07),
+        read(0x8001, 0x10),
+        read(0x0010, 0x81),
+        write(0x0010, 0x81),
+        write(0x0010, 0x02),
+        fetch(0x8002, 0xA2),
+        read(0x8003, 0x01),
+        fetch(0x8004, 0xDF),
+        read(0x8005, 0xFF),
+        read(0x8006, 0x02),
+        read(0x0200, 0x00),
+        read(0x0300, 0x05),
+        write(0x0300, 0x05),
+        write(0x0300, 0x04),
+        fetch(0x8007, 0xA0),
+        read(0x8008, 0x01),
+        fetch(0x8009, 0xF3),
+        read(0x800A, 0x30),
+        read(0x0030, 0xFF),
+        read(0x0031, 0x03),
+        read(0x0300, 0x04),
+        read(0x0400, 0x09),
+        write(0x0400, 0x09),
+        write(0x0400, 0x0A),
+        fetch(0x800B, 0x4C),
+    ])
+
+
+@cocotb.test()
+async def test_unofficial_nop_timing(dut: "DUT"):
+    """The unofficial NOPs read their operands like the matching official
+    instructions: implied and immediate take 2 cycles, zero page 3, zero
+    page,X and absolute 4, and absolute,X 4, or 5 across a page."""
+    cpu = await boot(dut, [
+        0xA2, 0x05,         # 8000 LDX #$05
+        0x1A,               # 8002 NOP
+        0x80, 0x12,         # 8003 NOP #$12
+        0x04, 0x10,         # 8005 NOP $10
+        0x14, 0x10,         # 8007 NOP $10,X
+        0x0C, 0x34, 0x12,   # 8009 NOP $1234
+        0x1C, 0x34, 0x12,   # 800C NOP $1234,X
+        0x1C, 0xFE, 0x12,   # 800F NOP $12FE,X (page cross)
+        *jmp_self(0x8012),  # 8012 JMP *
+    ])
+    cpu.memory[0x0010] = 0xAA
+    cpu.memory[0x0015] = 0xBB
+    cpu.memory[0x1234] = 0x11
+    cpu.memory[0x1239] = 0x22
+    cpu.memory[0x1203] = 0x33
+    cpu.memory[0x1303] = 0x44
+    assert_trace(await cpu.cycles(27), [
+        fetch(0x8000, 0xA2),
+        read(0x8001, 0x05),
+        fetch(0x8002, 0x1A),
+        read(0x8003, 0x80),
+        fetch(0x8003, 0x80),
+        read(0x8004, 0x12),
+        fetch(0x8005, 0x04),
+        read(0x8006, 0x10),
+        read(0x0010, 0xAA),
+        fetch(0x8007, 0x14),
+        read(0x8008, 0x10),
+        read(0x0010, 0xAA),
+        read(0x0015, 0xBB),
+        fetch(0x8009, 0x0C),
+        read(0x800A, 0x34),
+        read(0x800B, 0x12),
+        read(0x1234, 0x11),
+        fetch(0x800C, 0x1C),
+        read(0x800D, 0x34),
+        read(0x800E, 0x12),
+        read(0x1239, 0x22),
+        fetch(0x800F, 0x1C),
+        read(0x8010, 0xFE),
+        read(0x8011, 0x12),
+        read(0x1203, 0x33),
+        read(0x1303, 0x44),
+        fetch(0x8012, 0x4C),
+    ])
+
+
+#: Every stable unofficial NOP, with an operand for its addressing mode
+UNOFFICIAL_NOPS = [
+    *([opcode] for opcode in (0x1A, 0x3A, 0x5A, 0x7A, 0xDA, 0xFA)),
+    *([opcode, 0xA5] for opcode in (0x80, 0x82, 0x89, 0xC2, 0xE2)),
+    *([opcode, 0x10] for opcode in (0x04, 0x44, 0x64)),
+    *([opcode, 0x10] for opcode in (0x14, 0x34, 0x54, 0x74, 0xD4, 0xF4)),
+    [0x0C, 0x34, 0x12],
+    *([opcode, 0x34, 0x12] for opcode in (0x1C, 0x3C, 0x5C, 0x7C, 0xDC, 0xFC)),
+]
+
+
+@cocotb.test()
+async def test_unofficial_nops(dut: "DUT"):
+    """Every unofficial NOP leaves A, X, Y and the flags alone, and none of
+    them writes to memory."""
+    program, end = assemble(
+        *CLEAR_FLAGS,
+        [0xA9, 0xA5],           # LDA #$A5
+        [0xA2, 0x5A],           # LDX #$5A
+        [0xA0, 0x3C],           # LDY #$3C
+        [0x38],                 # SEC
+        *UNOFFICIAL_NOPS,
+        [0x8D, 0x00, 0x02],     # STA $0200
+        [0x8E, 0x01, 0x02],     # STX $0201
+        [0x8C, 0x02, 0x02],     # STY $0202
+        store_flags(0x0203),
+    )
+    cpu = await boot(dut, program)
+    await run_to_end(cpu, end)
+    assert results(cpu, 4) == [0xA5, 0x5A, 0x3C, pushed_p(c=True)]
+    # The only writes are the stores above, and PHP's push to the stack
+    writes = [c for c in cpu.trace if not c.read and c.address >> 8 != 0x01]
+    assert all(RESULTS <= c.address < RESULTS + 4 for c in writes), \
+        f"Unexpected writes: {[str(c) for c in writes]}"
+
+
+# endregion

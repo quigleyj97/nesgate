@@ -44,7 +44,7 @@ begin
         end if;
     end process;
 
-    db_bus_port <= register_data when db_bus_enable_DL_DB = '1' else (others => 'Z');
-    adh_bus_port <= register_data when adh_bus_enable_DL_ADH = '1' else (others => 'Z');
-    adl_bus_port <= register_data when adl_bus_enable_DL_ADL = '1' else (others => 'Z');
+    db_bus_port <= register_data when db_bus_enable_DL_DB = '1' else (others => '1');
+    adh_bus_port <= register_data when adh_bus_enable_DL_ADH = '1' else (others => '1');
+    adl_bus_port <= register_data when adl_bus_enable_DL_ADL = '1' else (others => '1');
 end architecture;

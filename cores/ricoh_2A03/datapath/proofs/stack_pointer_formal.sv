@@ -1,6 +1,5 @@
-// Properties of the stack pointer, checked on every metaclock edge. The SB
-// and ADL ports go through the same precharge techmap as synthesis (see
-// techmaps/precharge_tribuf.v), so a disabled port reads all ones.
+// Properties of the stack pointer, checked on every metaclock edge. A disabled
+// SB or ADL port drives all ones, releasing the bus.
 module stack_pointer_formal (
     input metaclock,
     input phi2,

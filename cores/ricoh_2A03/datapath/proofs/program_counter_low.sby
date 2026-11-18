@@ -16,12 +16,8 @@ cover: smtbmc z3
 read_verilog program_counter_low.v
 read_verilog -formal -sv program_counter_low_formal.sv
 prep -top program_counter_low_formal
-flatten
-tribuf -merge
-techmap -map precharge_tribuf.v
 check -assert
 
 [files]
 formal/program_counter_low.v
 ../cores/ricoh_2A03/datapath/proofs/program_counter_low_formal.sv
-../techmaps/precharge_tribuf.v

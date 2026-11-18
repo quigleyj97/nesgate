@@ -10,7 +10,6 @@ when it isn't enabled, and the bus resolves to whichever one is driving.
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import Timer
-from cocotb.types import LogicArray
 
 if TYPE_CHECKING:
     from mos_6502_datapath import Mos6502Datapath as DUT
@@ -74,7 +73,8 @@ CONTROL_SIGNALS = [
 
 BUSES = ["databus_SB", "databus_DB", "databus_ADH", "databus_ADL"]
 DRIVERS = ["drive_SB", "drive_DB", "drive_ADH", "drive_ADL"]
-UNDRIVEN = LogicArray("ZZZZZZZZ")
+#: All ones: a released driver leaves the precharged bus alone
+UNDRIVEN = 0xFF
 
 
 async def reset(dut: "DUT"):
@@ -347,13 +347,13 @@ async def test_data_output_latch(dut: "DUT"):
 
     dut.phi2.value = 1
     await Timer(1, unit="ns")
-    assert not dut.data_out.value.is_resolvable, "DOR should not drive while reading"
+    assert dut.data_out.value == 0xFF, "DOR should release the pins while reading"
     dut.signal_R_NOT_W.value = 0
     await Timer(1, unit="ns")
     assert dut.data_out.value == 0x6B
     dut.phi2.value = 0
     await Timer(1, unit="ns")
-    assert not dut.data_out.value.is_resolvable, "DOR should only drive during phi2"
+    assert dut.data_out.value == 0xFF, "DOR should only drive during phi2"
     dut.signal_R_NOT_W.value = 1
 
 
@@ -490,3 +490,28 @@ async def test_zero_page_address(dut: "DUT"):
     await Timer(1, unit="ns")
     await pulse(dut.phi1)
     assert dut.address.value == 0x0034, f"Expected address 0x0034, got {dut.address.value}"
+
+
+@cocotb.test()
+async def test_wired_and(dut: "DUT"):
+    """Two registers driving the same bus read their wired-AND, as on the real
+    chip's precharged buses (SBX puts A and X on SB at once). A driver from
+    outside the datapath ANDs in too."""
+    await reset(dut)
+    await load_from_sb(dut, dut.load_SB_AC, 0xF0)
+    await load_from_sb(dut, dut.load_SB_X, 0x3C)
+
+    dut.output_enable_AC_SB.value = 1
+    dut.output_enable_X_SB.value = 1
+    await Timer(1, unit="ns")
+    assert dut.databus_SB.value == 0x30, f"Expected A AND X on SB, got {dut.databus_SB.value}"
+
+    dut.drive_SB.value = 0x1F
+    await Timer(1, unit="ns")
+    assert dut.databus_SB.value == 0x10, f"Expected A AND X AND drive_SB, got {dut.databus_SB.value}"
+
+    dut.drive_SB.value = UNDRIVEN
+    dut.output_enable_AC_SB.value = 0
+    dut.output_enable_X_SB.value = 0
+    await Timer(1, unit="ns")
+    assert dut.databus_SB.value == 0xFF, "SB should be precharged again"

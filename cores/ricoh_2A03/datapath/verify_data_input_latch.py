@@ -30,9 +30,9 @@ async def test_data_input_latch(dut: "DUT"):
     assert dut.register_data.value == 0x96
 
     # Assert that the register outputs open bus when the enable signals are low
-    assert not dut.db_bus_port.value.is_resolvable
-    assert not dut.adh_bus_port.value.is_resolvable
-    assert not dut.adl_bus_port.value.is_resolvable
+    assert dut.db_bus_port.value == 0xFF
+    assert dut.adh_bus_port.value == 0xFF
+    assert dut.adl_bus_port.value == 0xFF
 
     dut.db_bus_enable_DL_DB.value = 1
     await Timer(1, unit="ns")
@@ -42,10 +42,10 @@ async def test_data_input_latch(dut: "DUT"):
     dut.adh_bus_enable_DL_ADH.value = 1
     await Timer(1, unit="ns")
     assert dut.adh_bus_port.value == 0x96
-    assert not dut.db_bus_port.value.is_resolvable
+    assert dut.db_bus_port.value == 0xFF
     dut.adh_bus_enable_DL_ADH.value = 0
 
     dut.adl_bus_enable_DL_ADL.value = 1
     await Timer(1, unit="ns")
     assert dut.adl_bus_port.value == 0x96
-    assert not dut.adh_bus_port.value.is_resolvable
+    assert dut.adh_bus_port.value == 0xFF

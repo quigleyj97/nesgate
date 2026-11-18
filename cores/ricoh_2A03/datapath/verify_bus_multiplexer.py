@@ -7,8 +7,9 @@ from cocotb.types import LogicArray
 if TYPE_CHECKING:
     from bus_multiplexer import BusMultiplexer as DUT
 
-UNDRIVEN = LogicArray("ZZZZZZZZ")
-DRIVERS = ["drive_SB", "drive_DB", "drive_ADH", "drive_ADL", "external_SB", "external_DB", "external_ADH", "external_ADL"]
+#: All ones: nothing pulls any bit low
+UNDRIVEN = 0xFF
+DRIVERS = ["drive_SB", "drive_DB", "drive_ADH", "drive_ADL"]
 CONTROLS = [
     "connect_SB_DB",
     "connect_SB_ADH",
@@ -41,9 +42,9 @@ async def test_precharged_when_idle(dut: "DUT"):
 
 @cocotb.test()
 async def test_undriven_bits_read_high(dut: "DUT"):
-    """Bits nobody drives read high, even when other bits are driven."""
+    """Bits nobody pulls low read high, even when other bits are driven."""
     await reset(dut)
-    dut.drive_DB.value = LogicArray("ZZZZ0101")
+    dut.drive_DB.value = LogicArray("11110101")
     await Timer(1, unit="ns")
     assert int(dut.bus_DB.value) == 0xF5
 
@@ -161,20 +162,9 @@ async def test_open_drain_adh(dut: "DUT"):
 
 @cocotb.test()
 async def test_conflict_stays_visible(dut: "DUT"):
-    """A conflicting or uninitialized driver reads 'X', not a silent value."""
+    """An uninitialized driver, or a stray 'Z' left over from a tri-state
+    driver, reads 'X', not a silent value."""
     await reset(dut)
-    dut.drive_SB.value = LogicArray("XZZZZZZ0")
+    dut.drive_SB.value = LogicArray("XZ111110")
     await Timer(1, unit="ns")
-    assert str(dut.bus_SB.value) == "X1111110"
-
-
-@cocotb.test()
-async def test_external_drivers(dut: "DUT"):
-    """Drivers from outside the datapath are wired-ANDed with the internal ones."""
-    await reset(dut)
-    dut.external_SB.value = 0x77
-    await Timer(1, unit="ns")
-    assert int(dut.bus_SB.value) == 0x77
-    dut.drive_SB.value = 0x3F
-    await Timer(1, unit="ns")
-    assert int(dut.bus_SB.value) == 0x37
+    assert str(dut.bus_SB.value) == "XX111110"

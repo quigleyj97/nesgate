@@ -27,7 +27,7 @@ async def test_index_register(dut: "DUT"):
     assert dut.register_data.value == 0xA5
 
     # Assert that the register outputs open bus when the enable signal is low
-    assert not dut.data_out.value.is_resolvable
+    assert dut.data_out.value == 0xFF
 
     dut.output_enable.value = 1
     await Timer(1, unit="ns")

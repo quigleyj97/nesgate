@@ -38,7 +38,7 @@ entity status_register is
         phi1: in std_ulogic;
         --! @ref Ricoh_2A03_DB, as resolved by @ref bus_multiplexer
         db_bus_in: in std_ulogic_vector(7 downto 0);
-        --! Drives @ref Ricoh_2A03_DB, 'Z' when not enabled
+        --! Drives @ref Ricoh_2A03_DB, all ones (released) when not enabled
         db_bus_out: out std_ulogic_vector(7 downto 0);
         --! @ref Ricoh_Signal_P_DB
         enable_P_DB: in std_ulogic;
@@ -114,11 +114,9 @@ begin
         db_bus_in(7)
     );
     -- Bit 4 is the B flag from the interrupt logic, and bit 5 is hardwired as
-    -- 1. This is one assignment of the whole vector, so that synthesis sees one
-    -- 8-bit tri-state driver: yosys only merges the tri-state drivers of a bus
-    -- that drive the same bits, and turns the rest into plain connections.
+    -- 1. While P/DB is low, every bit reads 1, releasing DB.
     db_bus_out <= register_data(7 downto 6) & '1' & break_flag_B_OUT & register_data(3 downto 0)
-        when enable_P_DB = '1' else (others => 'Z');
+        when enable_P_DB = '1' else (others => '1');
 
     carry_flag_C_OUT <= register_data(0);
     zero_flag_Z_OUT <= register_data(1);

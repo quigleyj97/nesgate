@@ -28,7 +28,7 @@
 --!
 --! The real data pins are bidirectional. The FPGA fabric has no internal
 --! tri-states, so they're split into `data_in` and `data_out`, and `data_out`
---! is 'Z' unless the CPU is writing during Phi2.
+--! reads all ones unless the CPU is writing during Phi2.
 --!
 --! Not implemented yet:
 --!
@@ -61,8 +61,8 @@ entity mos_6502 is
         --! The data pins, D0-D7, as driven by memory. They're read at the end
         --! of Phi2.
         data_in: in std_ulogic_vector(7 downto 0);
-        --! The data pins, D0-D7, as driven by the CPU. 'Z' unless writing
-        --! during Phi2.
+        --! The data pins, D0-D7, as driven by the CPU. All ones unless
+        --! writing during Phi2.
         data_out: out std_ulogic_vector(7 downto 0);
         --! @ref Ricoh_Signal_R_NOT_W, the R/W pin. Low for the whole of a
         --! write cycle.
@@ -529,9 +529,9 @@ architecture rtl of mos_6502 is
     signal bus_DB: std_ulogic_vector(7 downto 0);
     --! @ref Ricoh_2A03_ADL, as resolved by the datapath
     signal bus_ADL: std_ulogic_vector(7 downto 0);
-    --! The adder hold register driving SB (`ADD/SB`), 'Z' when it isn't
+    --! The adder hold register driving SB (`ADD/SB`), all ones when it isn't
     signal alu_drive_SB: std_ulogic_vector(7 downto 0);
-    --! The adder hold register driving ADL (`ADD/ADL`), 'Z' when it isn't
+    --! The adder hold register driving ADL (`ADD/ADL`), all ones when it isn't
     signal alu_drive_ADL: std_ulogic_vector(7 downto 0);
     -- #endregion
 begin
@@ -767,9 +767,8 @@ begin
             phi2 => phi2,
             metaclock => metaclock,
             drive_SB => alu_drive_SB,
-            -- Nothing outside the datapath drives DB or ADH. All ones reads the
-            -- same as 'Z' on a precharged bus, and unlike a constant 'Z', it
-            -- survives synthesis.
+            -- Nothing outside the datapath drives DB or ADH, so they get all
+            -- ones, which leave a precharged bus alone.
             drive_DB => (others => '1'),
             drive_ADH => (others => '1'),
             drive_ADL => alu_drive_ADL,

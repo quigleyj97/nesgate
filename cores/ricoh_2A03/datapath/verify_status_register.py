@@ -82,10 +82,11 @@ async def test_status_register_data_bus(dut: "DUT"):
     dut.break_flag_B_OUT.value = 0
     await Timer(1, unit="ns")
     assert dut.db_bus_out.value == 0b11101111, "Bit 4 should follow B_OUT"
-    dut.break_flag_B_OUT.value = 1
+    # With P/DB off, DB is released (all ones), even though P would push 0xEF
     dut.enable_P_DB.value = 0
     await Timer(1, unit="ns")
-    assert not dut.db_bus_out.value.is_resolvable
+    assert dut.db_bus_out.value == 0xFF
+    dut.break_flag_B_OUT.value = 1
 
 
 @cocotb.test()

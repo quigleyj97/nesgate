@@ -25,7 +25,7 @@ entity program_counter_low is
         signal_PCLC     : out std_ulogic;
         --! @ref Ricoh_2A03_ADL, as resolved by @ref bus_multiplexer
         bus_ADL_in      : in  std_ulogic_vector(7 downto 0);
-        --! Drives @ref Ricoh_2A03_ADL, 'Z' when not enabled
+        --! Drives @ref Ricoh_2A03_ADL, all ones (released) when not enabled
         bus_ADL_out     : out std_ulogic_vector(7 downto 0);
         --! @ref Ricoh_2A03_DB
         bus_DB          : out std_ulogic_vector(7 downto 0);
@@ -43,10 +43,10 @@ architecture rtl of program_counter_low is
     signal program_counter_select_register : std_ulogic_vector(7 downto 0) := (others => '0');
 begin
     -- Output to DB bus when PCL_DB is asserted
-    bus_DB <= program_counter_register when signal_PCL_DB = '1' else (others => 'Z');
+    bus_DB <= program_counter_register when signal_PCL_DB = '1' else (others => '1');
     
     -- Output to ADL bus when PCL_ADL is asserted
-    bus_ADL_out <= program_counter_register when signal_PCL_ADL = '1' else (others => 'Z');
+    bus_ADL_out <= program_counter_register when signal_PCL_ADL = '1' else (others => '1');
     
     -- Process to handle program counter selection. The select register holds
     -- its value while neither PCL/PCL nor ADL/PCL is asserted, so it's sampled

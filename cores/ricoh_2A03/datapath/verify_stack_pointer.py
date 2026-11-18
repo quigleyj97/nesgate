@@ -43,7 +43,7 @@ async def test_stack_pointer(dut: "DUT"):
     assert dut.bus_SB_out.value == 0b10101010, "Stack pointer did not output the correct value to bus_SB"
     dut.signal_S_SB.value = 0
     await Timer(1, unit="ns")
-    assert not dut.bus_SB_out.value.is_resolvable, "bus_SB should be open when signal_S_SB is low"
+    assert dut.bus_SB_out.value == 0xFF, "bus_SB should be released (all ones) when signal_S_SB is low"
 
     # Test outputting the stack pointer value to bus_ADL
     dut.signal_S_ADL.value = 1
@@ -51,7 +51,7 @@ async def test_stack_pointer(dut: "DUT"):
     assert dut.bus_ADL.value == 0b10101010, "Stack pointer did not output the correct value to bus_ADL"
     dut.signal_S_ADL.value = 0
     await Timer(1, unit="ns")
-    assert not dut.bus_ADL.value.is_resolvable, "bus_ADL should be open when signal_S_ADL is low"
+    assert dut.bus_ADL.value == 0xFF, "bus_ADL should be released (all ones) when signal_S_ADL is low"
 
     # Test that the stack pointer retains its value when no signals are active
     dut.bus_SB_in.value = 0b11111111

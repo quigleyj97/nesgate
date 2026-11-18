@@ -22,11 +22,11 @@ entity logic_core is
     port(
         --! @ref Ricoh_2A03_ADL, as resolved by @ref bus_multiplexer
         adl_bus_in: in std_ulogic_vector(7 downto 0);
-        --! Drives @ref Ricoh_2A03_ADL (ADD/ADL), 'Z' when not enabled
+        --! Drives @ref Ricoh_2A03_ADL (ADD/ADL), all ones (released) when not enabled
         adl_bus_out: out std_ulogic_vector(7 downto 0);
         --! @ref Ricoh_2A03_SB, as resolved by @ref bus_multiplexer
         sb_bus_in: in std_ulogic_vector(7 downto 0);
-        --! Drives @ref Ricoh_2A03_SB (ADD/SB), 'Z' when not enabled
+        --! Drives @ref Ricoh_2A03_SB (ADD/SB), all ones (released) when not enabled
         sb_bus_out: out std_ulogic_vector(7 downto 0);
         --! @ref Ricoh_2A03_DB, as resolved by @ref bus_multiplexer
         db_bus_in: in std_ulogic_vector(7 downto 0);

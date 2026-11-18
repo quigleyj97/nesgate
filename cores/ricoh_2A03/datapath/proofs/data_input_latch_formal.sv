@@ -1,6 +1,5 @@
-// Properties of the data input latch, checked on every metaclock edge. The
-// DB, ADH and ADL ports go through the same precharge techmap as synthesis
-// (see techmaps/precharge_tribuf.v), so a disabled port reads all ones.
+// Properties of the data input latch, checked on every metaclock edge. A
+// disabled DB, ADH or ADL port drives all ones, releasing the bus.
 module data_input_latch_formal (
     input metaclock,
     input load,

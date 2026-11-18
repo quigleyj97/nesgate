@@ -30,9 +30,9 @@ entity stack_pointer is
         signal_SB_S: in std_ulogic;
         --! @ref Ricoh_2A03_SB, as resolved by @ref bus_multiplexer
         bus_SB_in: in std_ulogic_vector(7 downto 0);
-        --! Drives @ref Ricoh_2A03_SB, 'Z' when not enabled
+        --! Drives @ref Ricoh_2A03_SB, all ones (released) when not enabled
         bus_SB_out: out std_ulogic_vector(7 downto 0);
-        --! Drives @ref Ricoh_2A03_ADL, 'Z' when not enabled
+        --! Drives @ref Ricoh_2A03_ADL, all ones (released) when not enabled
         bus_ADL: out std_ulogic_vector(7 downto 0);
         --! Clock to drive the latch circuitry
         --! @ref metaclock
@@ -57,6 +57,6 @@ begin
             end if;
         end if;
     end process;
-    bus_SB_out <= register_value when signal_S_SB = '1' else (others => 'Z');
-    bus_ADL <= register_value when signal_S_ADL = '1' else (others => 'Z');
+    bus_SB_out <= register_value when signal_S_SB = '1' else (others => '1');
+    bus_ADL <= register_value when signal_S_ADL = '1' else (others => '1');
 end architecture rtl;

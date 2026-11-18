@@ -12,9 +12,7 @@
 // The harness keeps a model of every register, built from the textbook
 // definitions below, and checks the core's outputs against it on every step.
 // The registers that aren't outputs (A and B) are only checked through what
-// they do to the outputs. The tri-state ports go through the same precharge
-// techmap as synthesis (see techmaps/precharge_tribuf.v), so a disabled port
-// reads all ones.
+// they do to the outputs. A disabled bus port drives all ones (released).
 module logic_core_formal (
     input metaclock,
     input phi2,

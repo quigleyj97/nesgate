@@ -26,8 +26,8 @@ async def test_accumulator_register(dut: "DUT"):
     dut.load_SB_AC.value = 0
     await Timer(1, unit="ns")
     assert dut.register_data.value == 0x5A
-    assert not dut.databus_DB.value.is_resolvable
-    assert not dut.databus_SB_out.value.is_resolvable
+    assert dut.databus_DB.value == 0xFF
+    assert dut.databus_SB_out.value == 0xFF
 
     dut.output_enable_AC_DB.value = 1
     await Timer(1, unit="ns")

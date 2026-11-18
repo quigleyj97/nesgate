@@ -32,7 +32,7 @@ entity program_counter_high is
         signal_ADH_PCH  : in  std_ulogic;
         --! @ref Ricoh_2A03_ADH, as resolved by @ref bus_multiplexer
         bus_ADH_in      : in  std_ulogic_vector(7 downto 0);
-        --! Drives @ref Ricoh_2A03_ADH, 'Z' when not enabled
+        --! Drives @ref Ricoh_2A03_ADH, all ones (released) when not enabled
         bus_ADH_out     : out std_ulogic_vector(7 downto 0);
         --! @ref Ricoh_2A03_DB
         bus_DB          : out std_ulogic_vector(7 downto 0);
@@ -51,8 +51,8 @@ architecture rtl of program_counter_high is
     --! @ref Ricoh_2A03_PCHC Carry from the low nibble into the high nibble
     signal signal_PCHC                     : std_ulogic;
 begin
-    bus_DB  <= program_counter_register when signal_PCH_DB = '1' else (others => 'Z');
-    bus_ADH_out <= program_counter_register when signal_PCH_ADH = '1' else (others => 'Z');
+    bus_DB  <= program_counter_register when signal_PCH_DB = '1' else (others => '1');
+    bus_ADH_out <= program_counter_register when signal_PCH_ADH = '1' else (others => '1');
 
     -- The select register holds its value while neither PCH/PCH nor ADH/PCH
     -- is asserted, so it's sampled on the metaclock rather than inferring a

@@ -97,12 +97,4 @@ Right now, there's only one target supported- the ULX3S with the ECP5-85k. I
 plan to extend the synthesis script to allow compilation for other targets as
 well, but we'll cross that bridge when we get there.
 
-### Techmaps
-
-The `/techmaps` folder holds Yosys techmap files that `synth` applies during
-synthesis, such as the one that models the CPU's precharged buses on an FPGA
-that has no internal tri-state buffers.
-
 @subpage cores
-
-@subpage techmaps

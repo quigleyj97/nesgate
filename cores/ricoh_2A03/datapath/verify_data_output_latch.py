@@ -29,21 +29,21 @@ async def test_data_output_latch(dut: "DUT"):
     dut.data_in.value = 0x00
     await Timer(1, unit="ns")
     assert dut.register_data.value == 0xC7
-    assert not dut.data_out.value.is_resolvable
+    assert dut.data_out.value == 0xFF
 
     # Reading: the pins stay released during Phi2
     dut.phi2.value = 1
     await Timer(1, unit="ns")
-    assert not dut.data_out.value.is_resolvable
+    assert dut.data_out.value == 0xFF
     dut.phi2.value = 0
 
     # Writing: the pins are only driven during Phi2
     dut.signal_R_NOT_W.value = 0
     await Timer(1, unit="ns")
-    assert not dut.data_out.value.is_resolvable, "DOR should not drive outside Phi2"
+    assert dut.data_out.value == 0xFF, "DOR should release the pins outside Phi2"
     dut.phi2.value = 1
     await Timer(1, unit="ns")
     assert dut.data_out.value == 0xC7
     dut.phi2.value = 0
     await Timer(1, unit="ns")
-    assert not dut.data_out.value.is_resolvable
+    assert dut.data_out.value == 0xFF

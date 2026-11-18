@@ -1,6 +1,5 @@
-// Properties of the accumulator, checked on every metaclock edge. The SB and
-// DB ports go through the same precharge techmap as synthesis (see
-// techmaps/precharge_tribuf.v), so a disabled port reads all ones.
+// Properties of the accumulator, checked on every metaclock edge. A disabled
+// SB or DB port drives all ones, releasing the bus.
 module accumulator_formal (
     input metaclock,
     input load_sb_ac,

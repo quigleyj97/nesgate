@@ -1,7 +1,6 @@
 // Properties of an index register (X, Y, and the address bus registers),
-// checked on every metaclock edge. The output port goes through the same
-// precharge techmap as synthesis (see techmaps/precharge_tribuf.v), so a
-// disabled port reads all ones.
+// checked on every metaclock edge. A disabled output port drives all
+// ones, releasing the bus.
 module index_register_formal (
     input metaclock,
     input load,

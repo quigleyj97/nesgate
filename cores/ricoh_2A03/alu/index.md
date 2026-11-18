@@ -9,10 +9,8 @@ properties hold, and `cover`, which shows that every interesting case can
 actually happen, so no property passes trivially.
 
 The clocked proofs are unbounded (`abc pdr`), so they hold after any number
-of steps, not only the first few. For every port that can drive a bus,
-the proof applies the same `tribuf -merge` and precharge techmap that `synth`
-uses (see @ref techmaps), so a disabled port reads all ones, the same as an
-undriven, precharged bus.
+of steps, not only the first few. A port that can drive a bus reads all
+ones while it's disabled, the same as an undriven, precharged bus.
 
 | Subunit | Harness | Clocking |
 |---|---|---|
@@ -111,10 +109,6 @@ The proof assumes both clocks start low.
 - What a real chip does when two clock edges arrive on the same formal step.
   The proofs use the netlist's behavior, where every register samples its
   inputs from just before the edge.
-- That a disabled port is high impedance (`'Z'`) rather than driving 0xFF.
-  With the precharge techmap, the two read the same, so the proofs can only
-  show that a disabled port reads all ones. The cocotb testbenches check for
-  `'Z'`.
 - Decimal mode. The proof only confirms that `DAA` is ignored, which matches
   this implementation (see the to-do list below), not a real 6502 in decimal
   mode.

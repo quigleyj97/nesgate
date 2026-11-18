@@ -13,7 +13,7 @@ entity accumulator is
     port(
         --! @ref Ricoh_2A03_SB, as resolved by @ref bus_multiplexer
         databus_SB_in: in std_ulogic_vector(7 downto 0);
-        --! Drives @ref Ricoh_2A03_SB, 'Z' when not enabled
+        --! Drives @ref Ricoh_2A03_SB, all ones (released) when not enabled
         databus_SB_out: out std_ulogic_vector(7 downto 0);
         --! @ref Ricoh_2A03_DB
         databus_DB: out std_ulogic_vector(7 downto 0);
@@ -41,6 +41,6 @@ begin
         end if;
     end process;
 
-    databus_DB <= register_data when output_enable_AC_DB = '1' else (others => 'Z');
-    databus_SB_out <= register_data when output_enable_AC_SB = '1' else (others => 'Z');
+    databus_DB <= register_data when output_enable_AC_DB = '1' else (others => '1');
+    databus_SB_out <= register_data when output_enable_AC_SB = '1' else (others => '1');
 end architecture;
