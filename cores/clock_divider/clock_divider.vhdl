@@ -13,7 +13,7 @@ use ieee.std_logic_1164.all;
 --!
 entity clock_divider is
     generic(
-        --! How many times to divid
+        --! How many input edges each half of the output period lasts
         divide_by: natural := 2
     );
     port(

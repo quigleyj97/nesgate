@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Formally verify this core's entities. Run by `formal` after every core has
+# been imported. $1 is the build directory.
+
+set -e
+
+# <entity>:<sby file>[:<variant>...], with the .sby path relative to the build
+# directory. Every variant here needs a matching task in the .sby file.
+PROOFS=(
+    clock_divider:../cores/clock_divider/proofs/clock_divider.sby:divide_by=1:divide_by=2:divide_by=3:divide_by=7:divide_by=8
+)
+
+"$(dirname "$0")/../../util/formal_check" "$1" "${PROOFS[@]}"

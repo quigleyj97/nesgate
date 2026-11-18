@@ -1,0 +1,50 @@
+# One prove and one cover task per divisor. Each reads the netlist that
+# formal_check synthesized for that divisor (see the clock_divider entry in
+# ../formal), so the two lists must match. 1 is the smallest divisor, 2 the
+# default, 3 the fewest metaclocks per phase the CPU allows, 7 the top level's
+# METACLOCKS_PER_PHASE, and 8 a power of two, where the counter uses every
+# value of its bits.
+[tasks]
+divide_by_1_prove divide_by_1 prove
+divide_by_1_cover divide_by_1 cover
+divide_by_2_prove divide_by_2 prove
+divide_by_2_cover divide_by_2 cover
+divide_by_3_prove divide_by_3 prove
+divide_by_3_cover divide_by_3 cover
+divide_by_7_prove divide_by_7 prove
+divide_by_7_cover divide_by_7 cover
+divide_by_8_prove divide_by_8 prove
+divide_by_8_cover divide_by_8 cover
+
+[options]
+prove: mode prove
+cover: mode cover
+# The second rising edge of the largest divisor's output, at input edge 3 x 8
+cover: depth 26
+
+[engines]
+prove: abc pdr
+cover: smtbmc z3
+
+[script]
+divide_by_1: read_verilog clock_divider_divide_by_1.v
+divide_by_2: read_verilog clock_divider_divide_by_2.v
+divide_by_3: read_verilog clock_divider_divide_by_3.v
+divide_by_7: read_verilog clock_divider_divide_by_7.v
+divide_by_8: read_verilog clock_divider_divide_by_8.v
+read_verilog -formal -sv clock_divider_formal.sv
+divide_by_1: chparam -set DIVIDE_BY 1 clock_divider_formal
+divide_by_2: chparam -set DIVIDE_BY 2 clock_divider_formal
+divide_by_3: chparam -set DIVIDE_BY 3 clock_divider_formal
+divide_by_7: chparam -set DIVIDE_BY 7 clock_divider_formal
+divide_by_8: chparam -set DIVIDE_BY 8 clock_divider_formal
+prep -top clock_divider_formal
+check -assert
+
+[files]
+formal/clock_divider_divide_by_1.v
+formal/clock_divider_divide_by_2.v
+formal/clock_divider_divide_by_3.v
+formal/clock_divider_divide_by_7.v
+formal/clock_divider_divide_by_8.v
+../cores/clock_divider/proofs/clock_divider_formal.sv
