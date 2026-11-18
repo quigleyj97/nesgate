@@ -2,7 +2,7 @@
 
 VHDL-based emulator for the NES, targetted at the ULX3S development board.
 
-CI status: ![Github Actions CI badge](https://github.com/quigleyj97/nesgate/actions/workflows/synthesize.yml/badge.svg)
+CI status: ![Github Actions CI badge](https://github.com/quigleyj97/nesgate/actions/workflows/synthesize.yml/badge.svg) ![Formal verification badge](https://github.com/quigleyj97/nesgate/actions/workflows/formal.yml/badge.svg)
 
 Documentation: [quigleyj97.github.io/nesgate](https://quigleyj97.github.io/nesgate/md_README.html)
 
@@ -26,7 +26,7 @@ ALU and register file.
 The recommended toolchain is [OSS CAD Suite](https://github.com/YosysHQ/oss-cad-suite-build),
 which bundles GHDL, Yosys, nextpnr-ecp5 and ecppack for Linux and macOS
 (including Apple Silicon). CI uses the release pinned in
-`.github/workflows/synthesize.yml`, so use the same one locally. Building HDL
+`.github/actions/setup-oss-cad-suite/action.yml`, so use the same one locally. Building HDL
 tools from source (especially for macOS) is a painful adventure through the
 Dungeon Dimensions. You might even become unbearably knurd.
 
@@ -62,7 +62,8 @@ The runner analyzes every core into `build/`, then runs each executable
 `cores/<name>/formal` hook from the repository root, with the build directory
 as its first argument. It checks every core before failing, so all problems
 are listed. Cores without a hook are skipped. Each task's results go in
-`build/formal/`, and are merged into `build/formal/results.json` for CI.
+`build/formal/`, and are merged into `build/formal/results.json` for CI, where the
+`formal.yml` workflow runs them separately from the build.
 
 ### Programming
 

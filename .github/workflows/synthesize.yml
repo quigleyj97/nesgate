@@ -9,56 +9,9 @@ on:
 permissions:
   contents: read
 
-env:
-  OSS_CAD_SUITE_VERSION: "2026-11-10"
-
 jobs:
-  formal:
-    name: Formal verification
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-    - uses: actions/checkout@v4
-    # setup-oss-cad-suite always queries the GitHub releases API and downloads
-    # the suite, so restore it from the cache and only run the action on a miss.
-    # The action extracts to $RUNNER_TEMP/oss-cad-suite and adds its bin/ to
-    # PATH, which is all a cache hit needs to redo.
-    - name: Restore OSS CAD Suite
-      id: oss-cad-suite-cache
-      uses: actions/cache@v4
-      with:
-        path: ${{ runner.temp }}/oss-cad-suite
-        key: oss-cad-suite-${{ runner.os }}-${{ runner.arch }}-${{ env.OSS_CAD_SUITE_VERSION }}
-    - name: Install OSS CAD Suite
-      if: steps.oss-cad-suite-cache.outputs.cache-hit != 'true'
-      uses: YosysHQ/setup-oss-cad-suite@v3
-      with:
-        version: ${{ env.OSS_CAD_SUITE_VERSION }}
-        # Authenticate the releases API request to avoid public rate limits.
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Add cached OSS CAD Suite to PATH
-      if: steps.oss-cad-suite-cache.outputs.cache-hit == 'true'
-      run: echo "$RUNNER_TEMP/oss-cad-suite/bin" >> "$GITHUB_PATH"
-    - name: Run formal verification
-      run: ./formal
-    - name: Publish Formal Verification Report
-      uses: ctrf-io/github-test-reporter@v1
-      with:
-        report-path: './build/formal/results.json'
-        title: 'Formal Verification'
-        suite-folded-report: true
-        group-by: "suite"
-      if: always()
-    - name: Upload formal results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: formal-results
-        path: build/formal/
-
   build:
-
+    name: Build and test
     runs-on: ubuntu-latest
 
     steps:
@@ -74,27 +27,10 @@ jobs:
         pip install pipenv
         # --dev for Ruff, Pyright, and Copra (DUT type stubs), which synth uses.
         pipenv install --deploy --dev
-    # Keep this version in sync with the OSS CAD Suite release used locally.
-    # setup-oss-cad-suite always queries the GitHub releases API and downloads
-    # the suite, so restore it from the cache and only run the action on a miss.
-    # The action extracts to $RUNNER_TEMP/oss-cad-suite and adds its bin/ to
-    # PATH, which is all a cache hit needs to redo.
-    - name: Restore OSS CAD Suite
-      id: oss-cad-suite-cache
-      uses: actions/cache@v4
+    - name: Set up OSS CAD Suite
+      uses: ./.github/actions/setup-oss-cad-suite
       with:
-        path: ${{ runner.temp }}/oss-cad-suite
-        key: oss-cad-suite-${{ runner.os }}-${{ runner.arch }}-${{ env.OSS_CAD_SUITE_VERSION }}
-    - name: Install OSS CAD Suite
-      if: steps.oss-cad-suite-cache.outputs.cache-hit != 'true'
-      uses: YosysHQ/setup-oss-cad-suite@v3
-      with:
-        version: ${{ env.OSS_CAD_SUITE_VERSION }}
-        # Authenticate the releases API request to avoid public rate limits.
         github-token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Add cached OSS CAD Suite to PATH
-      if: steps.oss-cad-suite-cache.outputs.cache-hit == 'true'
-      run: echo "$RUNNER_TEMP/oss-cad-suite/bin" >> "$GITHUB_PATH"
     - name: Run FPGA synthesis
       env:
         # The suite sets VIRTUAL_ENV to itself; make pipenv use its own venv.

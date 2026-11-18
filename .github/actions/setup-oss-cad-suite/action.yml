@@ -1,0 +1,38 @@
+name: Set up OSS CAD Suite
+description: >
+  Install the pinned OSS CAD Suite release (GHDL, Yosys, SymbiYosys,
+  nextpnr-ecp5, ecppack) and add it to PATH, restoring it from the cache when
+  possible.
+
+inputs:
+  # Keep this version in sync with the OSS CAD Suite release used locally.
+  version:
+    description: OSS CAD Suite release to install
+    default: "2026-11-10"
+  github-token:
+    description: Token for the GitHub releases API request (avoids public rate limits)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # setup-oss-cad-suite always queries the GitHub releases API and downloads
+    # the suite, so restore it from the cache and only run the action on a miss.
+    # The action extracts to $RUNNER_TEMP/oss-cad-suite and adds its bin/ to
+    # PATH, which is all a cache hit needs to redo.
+    - name: Restore OSS CAD Suite
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/oss-cad-suite
+        key: oss-cad-suite-${{ runner.os }}-${{ runner.arch }}-${{ inputs.version }}
+    - name: Install OSS CAD Suite
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: YosysHQ/setup-oss-cad-suite@v3
+      with:
+        version: ${{ inputs.version }}
+        github-token: ${{ inputs.github-token }}
+    - name: Add cached OSS CAD Suite to PATH
+      if: steps.cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: echo "$RUNNER_TEMP/oss-cad-suite/bin" >> "$GITHUB_PATH"
