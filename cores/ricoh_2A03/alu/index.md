@@ -2,6 +2,28 @@
 
 ## Formal verification
 
+Each subunit of the ALU has its own SymbiYosys proof in `formal/`, and
+@ref logic_core has one more that checks them wired together. `./formal` runs
+them all. Every proof has two tasks: `prove`, which shows that the
+properties hold, and `cover`, which shows that every interesting case can
+actually happen, so no property passes trivially.
+
+The clocked proofs are unbounded (`abc pdr`), so they hold after any number
+of steps, not only the first few. For every port that can drive a bus,
+the proof applies the same `tribuf -merge` and precharge techmap that `synth`
+uses (see @ref techmaps), so a disabled port reads all ones, the same as an
+undriven, precharged bus.
+
+| Subunit | Harness | Clocking |
+|---|---|---|
+| @ref mos_6502_alu | `alu_formal.sv` | combinational, one instant |
+| @ref a_input_register | `a_input_register_formal.sv` | metaclock only |
+| @ref b_input_register | `b_input_register_formal.sv` | metaclock only |
+| @ref adder_hold_register | `adder_hold_register_formal.sv` | `multiclock on`: the rising edge of `load` |
+| @ref logic_core | `logic_core_formal.sv` | `multiclock on`: the metaclock and Phi2, each changing freely |
+
+### mos_6502_alu
+
 @ref mos_6502_alu, the combinational part of the ALU, is formally proven to
 behave as follows for every possible input: any A and B, either carry in,
 either value of `DAA`, and any combination of operation enables, including
@@ -28,11 +50,74 @@ the properties is passing trivially: every operation, a carry, a positive
 and a negative overflow, a shift where the AND mask changes the result,
 several operations enabled at once, and sums with `DAA` both set and clear.
 
+### a_input_register
+
+On every metaclock edge, the output becomes:
+
+- the SB input, if `SB/ADD` was high,
+- otherwise 0, if `0/ADD` was high (`SB/ADD` wins when both are high),
+- otherwise the value it already held.
+
+It powers up as 0.
+
+### b_input_register
+
+On every metaclock edge, the output becomes:
+
+- the DB input inverted, if `NOT(DB)/ADD` was high,
+- otherwise the DB input, if `DB/ADD` was high,
+- otherwise the ADL input, if `ADL/ADD` was high,
+- otherwise the value it already held.
+
+When several loads are high, the first one in that order wins. It powers up
+as 0.
+
+### adder_hold_register
+
+- On each rising edge of `load`, the register takes the value of `data_in`
+  from just before the edge. At any other time it holds that value, even
+  while `load` stays high and `data_in` changes.
+- `ADD/SB(0-6)`, `ADD/SB(7)` and `ADD/ADL` each put the held value on their
+  own bits, independently of one another. A port that isn't enabled reads
+  all ones (precharged).
+- It powers up as 0.
+
+The proof assumes `load` starts low, so the first step is never treated
+as an edge.
+
+### logic_core
+
+This proof checks the whole ALU path from the bus inputs to the bus outputs
+and flags, against a model built from the same definitions as the proofs
+above:
+
+- The A and B input registers load on the metaclock, as above.
+- The adder hold register takes the ALU result (computed from the A and B
+  registers and the operation and carry controls) on each rising edge of
+  Phi2, and drives SB and ADL as above.
+- `ACR` and `AVR` take the ALU's carry and overflow on each metaclock edge
+  while Phi2 is high, and hold them otherwise.
+- `HC` is always 0.
+
+The metaclock and Phi2 are independent inputs here, so the proof covers
+any timing of the two, including ones a real clock generator never produces,
+and not only real Phi1/Phi2 cycles. The A and B registers aren't outputs, so
+they're only checked through their effect on the outputs. Cover checks walk
+complete operations through the core: 0x7F + 0x01 overflowing to 0x80 on SB,
+a carry out onto ADL, `ROR`'s split of `ADD/SB(0-6)` from `ADD/SB(7)`, and the
+hold register and flags keeping their values while their inputs change.
+
+The proof assumes both clocks start low.
+
 ### Not verified
 
-- The rest of the ALU: @ref logic_core, the A and B input registers, the
-  adder hold register, and the latching of `ACR` and `AVR` on Phi2. Clocked
-  behavior isn't covered at all; the proof only looks at one instant.
+- What a real chip does when two clock edges arrive on the same formal step.
+  The proofs use the netlist's behavior, where every register samples its
+  inputs from just before the edge.
+- That a disabled port is high impedance (`'Z'`) rather than driving 0xFF.
+  With the precharge techmap, the two read the same, so the proofs can only
+  show that a disabled port reads all ones. The cocotb testbenches check for
+  `'Z'`.
 - Decimal mode. The proof only confirms that `DAA` is ignored, which matches
   this implementation (see the to-do list below), not a real 6502 in decimal
   mode.
