@@ -31,12 +31,23 @@ for core in "${CORES[@]}"; do
     popd
 done
 
+start_formal=$(date +%s)
+
 failed_cores=()
 for core in "${CORES[@]}"; do
     if [ -x $core/formal ] && ! $core/formal $BUILD_DIR; then
         failed_cores+=($core)
     fi
 done
+
+end_formal=$(date +%s)
+
+# Merge every task's JUnit report into build/formal/results.json (CTRF, for the
+# CI test reporter), failures included. Standard library only, so this works
+# without pipenv.
+shopt -s nullglob
+python3 -m util.merge_formal_results $start_formal $end_formal $BUILD_DIR/formal/*/*.xml
+
 if [ ${#failed_cores[@]} -ne 0 ]; then
     echo "Formal verification failed in: ${failed_cores[*]}" >&2
     exit 1

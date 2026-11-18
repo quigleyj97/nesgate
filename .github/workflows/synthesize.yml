@@ -42,6 +42,14 @@ jobs:
       run: echo "$RUNNER_TEMP/oss-cad-suite/bin" >> "$GITHUB_PATH"
     - name: Run formal verification
       run: ./formal
+    - name: Publish Formal Verification Report
+      uses: ctrf-io/github-test-reporter@v1
+      with:
+        report-path: './build/formal/results.json'
+        title: 'Formal Verification'
+        suite-folded-report: true
+        group-by: "suite"
+      if: always()
     - name: Upload formal results
       if: always()
       uses: actions/upload-artifact@v4

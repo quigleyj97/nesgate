@@ -19,17 +19,37 @@ shift
 
 failed=()
 
+# SymbiYosys writes a JUnit report for every task, but never runs if the entity
+# doesn't synthesize. Write one in the same shape so util/merge_formal_results
+# reports the failure too.
+write_synth_failure() {
+    local name=$1 entity=$2
+    mkdir -p "formal/${name}_synth"
+    cat > "formal/${name}_synth/${name}_synth.xml" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+<testsuite package="$name" name="synth" tests="1" errors="1" failures="0" skipped="0" time="0">
+<testcase classname="synth" name="synthesize $entity" time="0">
+<error type="ERROR" message="GHDL failed to synthesize $entity"/>
+</testcase>
+</testsuite>
+</testsuites>
+EOF
+}
+
 pushd "$BUILD_DIR" > /dev/null
 mkdir -p formal
 for proof in "$@"; do
     entity=${proof%%:*}
     sby_file=${proof#*:}
+    name=$(basename "$sby_file" .sby)
     if ! eval "$GHDL -m -b $entity" \
         || ! eval "$GHDL --synth --out=verilog $entity" > "formal/$entity.v"; then
         failed+=("$sby_file (synthesizing $entity)")
+        write_synth_failure "$name" "$entity"
         continue
     fi
-    if ! sby -f --prefix "formal/$(basename "$sby_file" .sby)" "$sby_file"; then
+    if ! sby -f --prefix "formal/$name" "$sby_file"; then
         failed+=("$sby_file")
     fi
 done
