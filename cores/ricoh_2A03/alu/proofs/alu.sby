@@ -18,4 +18,4 @@ check -assert
 
 [files]
 formal/mos_6502_alu.v
-../cores/ricoh_2A03/alu/formal/alu_formal.sv
+../cores/ricoh_2A03/alu/proofs/alu_formal.sv

@@ -7,11 +7,11 @@ set -e
 
 # <entity>:<sby file>, with the .sby path relative to the build directory
 PROOFS=(
-    mos_6502_alu:../cores/ricoh_2A03/alu/formal/alu.sby
-    a_input_register:../cores/ricoh_2A03/alu/formal/a_input_register.sby
-    b_input_register:../cores/ricoh_2A03/alu/formal/b_input_register.sby
-    adder_hold_register:../cores/ricoh_2A03/alu/formal/adder_hold_register.sby
-    logic_core:../cores/ricoh_2A03/alu/formal/logic_core.sby
+    mos_6502_alu:../cores/ricoh_2A03/alu/proofs/alu.sby
+    a_input_register:../cores/ricoh_2A03/alu/proofs/a_input_register.sby
+    b_input_register:../cores/ricoh_2A03/alu/proofs/b_input_register.sby
+    adder_hold_register:../cores/ricoh_2A03/alu/proofs/adder_hold_register.sby
+    logic_core:../cores/ricoh_2A03/alu/proofs/logic_core.sby
 )
 
 "$(dirname "$0")/../../util/formal_check" "$1" "${PROOFS[@]}"

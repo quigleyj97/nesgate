@@ -2,7 +2,7 @@
 
 ## Formal verification
 
-Each subunit of the ALU has its own SymbiYosys proof in `formal/`, and
+Each subunit of the ALU has its own SymbiYosys proof in `proofs/`, and
 @ref logic_core has one more that checks them wired together. `./formal` runs
 them all. Every proof has two tasks: `prove`, which shows that the
 properties hold, and `cover`, which shows that every interesting case can

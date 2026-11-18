@@ -19,4 +19,4 @@ check -assert
 
 [files]
 formal/a_input_register.v
-../cores/ricoh_2A03/alu/formal/a_input_register_formal.sv
+../cores/ricoh_2A03/alu/proofs/a_input_register_formal.sv

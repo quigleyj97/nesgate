@@ -23,5 +23,5 @@ check -assert
 
 [files]
 formal/adder_hold_register.v
-../cores/ricoh_2A03/alu/formal/adder_hold_register_formal.sv
+../cores/ricoh_2A03/alu/proofs/adder_hold_register_formal.sv
 ../techmaps/precharge_tribuf.v

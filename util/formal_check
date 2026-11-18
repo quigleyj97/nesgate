@@ -6,11 +6,21 @@
 # toolchain), then SymbiYosys runs every task in the .sby file. Results go in
 # formal/<sby name>_<task>/.
 #
+# GHDL elaborates generics away, so a generic entity can list variants after
+# the .sby file, each a comma-separated list of <generic>=<value>:
+#
+#   clock_divider:<sby file>:divide_by=2:divide_by=7
+#
+# Each variant is synthesized to its own netlist instead, named after the
+# entity and the variant with every ',' and '=' turned into '_' (here
+# formal/clock_divider_divide_by_2.v and formal/clock_divider_divide_by_7.v),
+# and the .sby file reads each one in its own task.
+#
 # Runs from the build directory, so .sby [files] paths are relative to it,
 # like each core's `analyze` (e.g. ../cores/...). Every core must have been
 # imported into the build library first.
 #
-# Usage: formal_check <build dir> <entity>:<sby file>...
+# Usage: formal_check <build dir> <entity>:<sby file>[:<variant>...]...
 
 set -x
 
@@ -39,14 +49,45 @@ EOF
 
 pushd "$BUILD_DIR" > /dev/null
 mkdir -p formal
+# Synthesize <entity> with the given generics to <netlist>
+synthesize() {
+    local entity=$1 netlist=$2 generics=$3
+    eval "$GHDL --synth --out=verilog $generics $entity" > "$netlist"
+}
+
 for proof in "$@"; do
-    entity=${proof%%:*}
-    sby_file=${proof#*:}
+    IFS=: read -r entity sby_file variant_list <<< "$proof"
+    variants=()
+    if [ -n "$variant_list" ]; then
+        IFS=: read -ra variants <<< "$variant_list"
+    fi
     name=$(basename "$sby_file" .sby)
-    if ! eval "$GHDL -m -b $entity" \
-        || ! eval "$GHDL --synth --out=verilog $entity" > "formal/$entity.v"; then
-        failed+=("$sby_file (synthesizing $entity)")
-        write_synth_failure "$name" "$entity"
+
+    synthesized=true
+    if ! eval "$GHDL -m -b $entity"; then
+        synthesized=false
+        failed_entity=$entity
+    elif [ ${#variants[@]} -eq 0 ]; then
+        if ! synthesize "$entity" "formal/$entity.v" ""; then
+            synthesized=false
+            failed_entity=$entity
+        fi
+    else
+        for variant in "${variants[@]}"; do
+            generics=""
+            for generic in ${variant//,/ }; do
+                generics+=" -g$generic"
+            done
+            if ! synthesize "$entity" "formal/${entity}_${variant//[,=]/_}.v" "$generics"; then
+                synthesized=false
+                failed_entity="$entity ($variant)"
+                break
+            fi
+        done
+    fi
+    if ! $synthesized; then
+        failed+=("$sby_file (synthesizing $failed_entity)")
+        write_synth_failure "$name" "$failed_entity"
         continue
     fi
     if ! sby -f --prefix "formal/$name" "$sby_file"; then

@@ -58,10 +58,11 @@ with a non-zero exit code. It can be run via pipenv, like the synth script:
 pipenv run ./formal
 ```
 
-The runner discovers `cores/<name>/formal`, invokes it from that core's
-directory with the absolute repository root as its first argument, and
-reports failures after checking every participating core. Cores without a
-hook are skipped; a failing hook or finding no hooks makes the command fail.
+The runner analyzes every core into `build/`, then runs each executable
+`cores/<name>/formal` hook from the repository root, with the build directory
+as its first argument. It checks every core before failing, so all problems
+are listed. Cores without a hook are skipped. Each task's results go in
+`build/formal/`, and are merged into `build/formal/results.json` for CI.
 
 ### Programming
 

@@ -23,5 +23,5 @@ check -assert
 
 [files]
 formal/logic_core.v
-../cores/ricoh_2A03/alu/formal/logic_core_formal.sv
+../cores/ricoh_2A03/alu/proofs/logic_core_formal.sv
 ../techmaps/precharge_tribuf.v
