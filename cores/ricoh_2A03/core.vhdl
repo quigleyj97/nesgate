@@ -30,6 +30,14 @@
 --! tri-states, so they're split into `data_in` and `data_out`, and `data_out`
 --! reads all ones unless the CPU is writing during Phi2.
 --!
+--! The data input latch and the predecode register read the pins on every
+--! Phi2, writes included, and on the real chip a write puts the CPU's own value
+--! on the pins. The unofficial read-modify-write opcodes (e.g. `SLO`) rely on
+--! that: the latch picks up the modified value during the final write, and the
+--! second operation (e.g. `ORA`) reads it from there. Since nothing guarantees
+--! what `data_in` holds during a write, the CPU's latches read `data_out`
+--! instead while R/W is low.
+--!
 --! Not implemented yet:
 --!
 --! - The `SO` (set overflow) pin, which drives `1/V`. `1/V` is tied low.
@@ -523,6 +531,12 @@ architecture rtl of mos_6502 is
     -- #endregion
 
     -- #region Buses
+    --! What the CPU drives onto the data pins: `data_out`, read back into
+    --! the CPU while writing
+    signal cpu_data_out: std_ulogic_vector(7 downto 0);
+    --! The value on the data pins: `cpu_data_out` during a write, otherwise
+    --! `data_in` from memory
+    signal data_pins: std_ulogic_vector(7 downto 0);
     --! @ref Ricoh_2A03_SB, as resolved by the datapath
     signal bus_SB: std_ulogic_vector(7 downto 0);
     --! @ref Ricoh_2A03_DB, as resolved by the datapath
@@ -539,7 +553,7 @@ begin
     PD: predecode_register
         port map(
             phi2 => phi2,
-            data_in => data_in,
+            data_in => data_pins,
             predecode_out => predecode_value,
             metaclock => metaclock
         );
@@ -760,8 +774,8 @@ begin
 
     DP: mos_6502_datapath
         port map(
-            data_in => data_in,
-            data_out => data_out,
+            data_in => data_pins,
+            data_out => cpu_data_out,
             address => address,
             phi1 => phi1,
             phi2 => phi2,
@@ -837,6 +851,8 @@ begin
             negative_flag_N_OUT => N_OUT
         );
 
+    data_out <= cpu_data_out;
+    data_pins <= cpu_data_out when R_NOT_W = '0' else data_in;
     read_not_write_R_NOT_W <= R_NOT_W;
     sync_SYNC <= T1;
 end architecture;

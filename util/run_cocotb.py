@@ -3,6 +3,7 @@ import sys
 from importlib.util import find_spec
 from pathlib import Path
 
+from cocotb_tools.check_results import get_results
 from cocotb_tools.runner import get_runner
 
 from util.copra_stubs import restore_casing
@@ -30,7 +31,7 @@ def run_cocotb_test(toplevel_name: str, test_name: str, sources: list[str]):
         test_modules.insert(0, "copra.integration.autostub")
         extra_env = {"COPRA_STUB_DIR": str(stub_dir), "COPRA_STUB_FILENAME": stub.name}
 
-    runner.test(
+    results_xml = runner.test(
         hdl_toplevel=toplevel_name,
         test_module=test_modules,
         plusargs=mk_plusargs(toplevel_name),
@@ -39,6 +40,14 @@ def run_cocotb_test(toplevel_name: str, test_name: str, sources: list[str]):
 
     if write_stubs:
         restore_casing(stub, sources)
+
+    # Outside pytest, runner.test() only fails if the simulator does, not if a
+    # test does, so check the results here. Otherwise `test` and `synth` carry
+    # on with failing tests.
+    num_tests, num_failed = get_results(results_xml)
+    if num_failed:
+        print(f"ERROR: {num_failed} of {num_tests} tests failed in {test_name}", file=sys.stderr)
+        sys.exit(1)
 
 def mk_plusargs(test_name: str) -> list[str]:
     plusargs = []
