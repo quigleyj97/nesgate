@@ -196,3 +196,33 @@ async def test_brk6e_sets_i(dut: "DUT"):
     await Timer(1, unit="ns")
     assert dut.interrupt_disable_I_OUT.value == 1, "I didn't stay set after BRK6E"
     assert dut.register_data.value == 0b0000_0100
+
+
+@cocotb.test()
+async def test_several_sources_wired_and(dut: "DUT"):
+    """A flag with several sources selected loads their AND, as on the real chip's latch node."""
+    await reset(dut)
+    # C from DB bit 0 (1) and ACR (0): 0. Both 1: 1.
+    dut.db_bus_in.value = 0x01
+    dut.signal_ACR.value = 0
+    await load(dut, "signal_DB0_C", "signal_ACR_C")
+    assert dut.carry_flag_C_OUT.value == 0
+    dut.signal_ACR.value = 1
+    await load(dut, "signal_DB0_C", "signal_ACR_C")
+    assert dut.carry_flag_C_OUT.value == 1
+    # 1/V with AVR clear loads 0, and 0/V wins over 1/V
+    dut.signal_AVR.value = 0
+    await load(dut, "signal_1_V")
+    await load(dut, "signal_1_V", "signal_AVR_V")
+    assert dut.overflow_flag_V_OUT.value == 0
+    await load(dut, "signal_1_V", "signal_0_V")
+    assert dut.overflow_flag_V_OUT.value == 0
+    # Z from DB bit 1 (1) and DBZ (0, since DB isn't zero): 0
+    dut.db_bus_in.value = 0x02
+    await load(dut, "signal_DBZ_Z")
+    dut.db_bus_in.value = 0x00
+    await load(dut, "signal_DBZ_Z")
+    assert dut.zero_flag_Z_OUT.value == 1
+    dut.db_bus_in.value = 0x02
+    await load(dut, "signal_DB1_Z", "signal_DBZ_Z")
+    assert dut.zero_flag_Z_OUT.value == 0

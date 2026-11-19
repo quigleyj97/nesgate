@@ -5,7 +5,7 @@ use ieee.std_logic_1164.all;
 --! @brief Processor status register (P) for the 6502
 --! @details Holds the C, Z, I, D, V and N flags (@ref MOS_6502_P_Register).
 --! Each flag loads from whichever of its sources the random logic selects, and
---! holds its value otherwise.
+--! holds its value while none is selected.
 --!
 --! The flag load commands come from output latches in the
 --! @ref random_logic_controller that are loaded during Phi2, so they stay high
@@ -14,8 +14,12 @@ use ieee.std_logic_1164.all;
 --! Phi2 they just refresh. This register is sampled on the @ref metaclock
 --! while `phi1` is high, so a flag can't pick up DB while it's precharging.
 --!
---! If more than one source of a flag is selected at once, the flag holds its
---! value. The random logic never does that.
+--! On the real chip, each source's select signal opens a pass MOSFET onto the
+--! flag latch's input node, so if more than one is selected at once, a 0 from
+--! any of them pulls the node low: the flag loads the AND of every selected
+--! source. This register does the same, like the wired-AND buses. The
+--! random logic never selects two sources at once, but unofficial opcodes
+--! might.
 --!
 --! The flags are also output to the random logic and the interrupt controller
 --! (`*_OUT`), active-high, unlike the real chip.
@@ -126,53 +130,45 @@ begin
     negative_flag_N_OUT <= register_data(7);
 
     process(metaclock)
-        variable select_C: std_ulogic_vector(2 downto 0);
-        variable select_Z: std_ulogic_vector(1 downto 0);
-        variable select_I: std_ulogic_vector(1 downto 0);
-        variable select_D: std_ulogic_vector(1 downto 0);
-        variable select_V: std_ulogic_vector(3 downto 0);
+        -- What a source puts on a flag's input node: its value while
+        -- selected, or 1 (released) while not, so the node reads the AND of
+        -- every selected source
+        function source(selected: std_ulogic; value: std_ulogic) return std_ulogic is
+        begin
+            return value or not selected;
+        end function;
     begin
         if rising_edge(metaclock) and phi1 = '1' then
-            select_C := signal_DB0_C & signal_IR5_C & signal_ACR_C;
-            case select_C is
-                when "100" => register_data(0) <= db_bus_in(0);
-                when "010" => register_data(0) <= signal_IR5;
-                when "001" => register_data(0) <= signal_ACR;
-                when others => null;
-            end case;
+            if (signal_DB0_C or signal_IR5_C or signal_ACR_C) = '1' then
+                register_data(0) <= source(signal_DB0_C, db_bus_in(0))
+                    and source(signal_IR5_C, signal_IR5)
+                    and source(signal_ACR_C, signal_ACR);
+            end if;
 
-            select_Z := signal_DB1_Z & signal_DBZ_Z;
-            case select_Z is
-                when "10" => register_data(1) <= db_bus_in(1);
-                when "01" => register_data(1) <= DBZ;
-                when others => null;
-            end case;
+            if (signal_DB1_Z or signal_DBZ_Z) = '1' then
+                register_data(1) <= source(signal_DB1_Z, db_bus_in(1))
+                    and source(signal_DBZ_Z, DBZ);
+            end if;
 
-            select_I := signal_DB2_I & signal_IR5_I;
-            case select_I is
-                when "10" => register_data(2) <= db_bus_in(2);
-                when "01" => register_data(2) <= signal_IR5;
-                when others =>
-                    if brk_cycle_6_end_BRK6E = '1' then
-                        register_data(2) <= '1';
-                    end if;
-            end case;
+            if (signal_DB2_I or signal_IR5_I) = '1' then
+                register_data(2) <= source(signal_DB2_I, db_bus_in(2))
+                    and source(signal_IR5_I, signal_IR5);
+            elsif brk_cycle_6_end_BRK6E = '1' then
+                register_data(2) <= '1';
+            end if;
 
-            select_D := signal_DB3_D & signal_IR5_D;
-            case select_D is
-                when "10" => register_data(3) <= db_bus_in(3);
-                when "01" => register_data(3) <= signal_IR5;
-                when others => null;
-            end case;
+            if (signal_DB3_D or signal_IR5_D) = '1' then
+                register_data(3) <= source(signal_DB3_D, db_bus_in(3))
+                    and source(signal_IR5_D, signal_IR5);
+            end if;
 
-            select_V := signal_DB6_V & signal_AVR_V & signal_1_V & signal_0_V;
-            case select_V is
-                when "1000" => register_data(6) <= db_bus_in(6);
-                when "0100" => register_data(6) <= signal_AVR;
-                when "0010" => register_data(6) <= '1';
-                when "0001" => register_data(6) <= '0';
-                when others => null;
-            end case;
+            -- 1/V selects a source that's always 1, and 0/V one that's
+            -- always 0
+            if (signal_DB6_V or signal_AVR_V or signal_1_V or signal_0_V) = '1' then
+                register_data(6) <= source(signal_DB6_V, db_bus_in(6))
+                    and source(signal_AVR_V, signal_AVR)
+                    and not signal_0_V;
+            end if;
 
             if signal_DB7_N = '1' then
                 register_data(7) <= db_bus_in(7);

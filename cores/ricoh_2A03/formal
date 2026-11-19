@@ -5,13 +5,17 @@
 
 set -e
 
-# <entity>:<sby file>, with the .sby path relative to the build directory
+# <entity>:<sby file>, with the .sby path relative to the build directory.
+# formal_check starts the tasks in this order, several at a time, so the
+# slowest proofs (the decoder, the datapath and the logic core) come first.
 PROOFS=(
+    predecode_register+predecode_logic+instruction_register+timing_generator+decoder_rom+ready_controller+interrupt_controller+random_logic_controller:../cores/ricoh_2A03/decoder/proofs/decoder.sby
+    mos_6502_datapath:../cores/ricoh_2A03/datapath/proofs/datapath.sby
+    logic_core:../cores/ricoh_2A03/alu/proofs/logic_core.sby
     mos_6502_alu:../cores/ricoh_2A03/alu/proofs/alu.sby
     a_input_register:../cores/ricoh_2A03/alu/proofs/a_input_register.sby
     b_input_register:../cores/ricoh_2A03/alu/proofs/b_input_register.sby
     adder_hold_register:../cores/ricoh_2A03/alu/proofs/adder_hold_register.sby
-    logic_core:../cores/ricoh_2A03/alu/proofs/logic_core.sby
     index_register:../cores/ricoh_2A03/datapath/proofs/index_register.sby
     accumulator:../cores/ricoh_2A03/datapath/proofs/accumulator.sby
     data_input_latch:../cores/ricoh_2A03/datapath/proofs/data_input_latch.sby
@@ -21,7 +25,6 @@ PROOFS=(
     program_counter_low:../cores/ricoh_2A03/datapath/proofs/program_counter_low.sby
     program_counter_high:../cores/ricoh_2A03/datapath/proofs/program_counter_high.sby
     bus_multiplexer:../cores/ricoh_2A03/datapath/proofs/bus_multiplexer.sby
-    mos_6502_datapath:../cores/ricoh_2A03/datapath/proofs/datapath.sby
     predecode_register:../cores/ricoh_2A03/decoder/proofs/predecode_register.sby
     predecode_logic:../cores/ricoh_2A03/decoder/proofs/predecode_logic.sby
     instruction_register:../cores/ricoh_2A03/decoder/proofs/instruction_register.sby
@@ -30,7 +33,6 @@ PROOFS=(
     ready_controller:../cores/ricoh_2A03/decoder/proofs/ready_controller.sby
     interrupt_controller:../cores/ricoh_2A03/decoder/proofs/interrupt_controller.sby
     random_logic_controller:../cores/ricoh_2A03/decoder/proofs/random_logic_controller.sby
-    predecode_register+predecode_logic+instruction_register+timing_generator+decoder_rom+ready_controller+interrupt_controller+random_logic_controller:../cores/ricoh_2A03/decoder/proofs/decoder.sby
 )
 
 "$(dirname "$0")/../../util/formal_check" "$1" "${PROOFS[@]}"

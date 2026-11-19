@@ -18,7 +18,7 @@ ones while it's disabled, the same as an undriven, precharged bus.
 | @ref a_input_register | `a_input_register_formal.sv` | metaclock only |
 | @ref b_input_register | `b_input_register_formal.sv` | metaclock only |
 | @ref adder_hold_register | `adder_hold_register_formal.sv` | metaclock only |
-| @ref logic_core | `logic_core_formal.sv` | `multiclock on`: the metaclock and Phi2, each changing freely |
+| @ref logic_core | `logic_core_formal.sv` | real Phi1/Phi2 phases of 3-7 metaclock cycles (`two_phase_clock.sv`) |
 
 ### mos_6502_alu
 
@@ -83,32 +83,35 @@ as 0.
 ### logic_core
 
 This proof checks the whole ALU path from the bus inputs to the bus outputs
-and flags, against a model built from the same definitions as the proofs
-above:
+and flags, phase by phase, with real Phi1/Phi2 clocks. Each property is read
+at the end of a phase, and the harness keeps no model of the netlist's
+registers. ACR and AVR are outputs, so they're checked against their values
+at the end of the phase before. The A and B input registers and the adder hold
+register aren't, so the harness follows them as @ref logic_core documents them:
 
-- The A and B input registers load on the metaclock, as above.
-- The adder hold register takes the ALU result (computed from the A and B
-  registers and the operation and carry controls) on each metaclock edge
-  while Phi2 is high, and drives SB and ADL as above.
-- `ACR` and `AVR` take the ALU's carry and overflow on each metaclock edge
-  while Phi2 is high, and hold them otherwise.
+- During Phi1, A and B load from their selected sources, as above, and hold
+  while none is selected. They hold through Phi2.
+- During Phi2, the adder hold register, `ACR` and `AVR` take the ALU's
+  result, carry and overflow from A and B, from the same textbook definitions
+  as the @ref mos_6502_alu proof. All three hold through Phi1, while A and B
+  load the next operands.
+- The hold register drives SB and ADL as above.
 - `HC` is always 0.
 
-The metaclock and Phi2 are independent inputs here, so the proof covers
-any timing of the two, including ones a real clock generator never produces,
-and not only real Phi1/Phi2 cycles. The A and B registers aren't outputs, so
-they're only checked through their effect on the outputs. Cover checks walk
-complete operations through the core: 0x7F + 0x01 overflowing to 0x80 on SB,
-a carry out onto ADL, `ROR`'s split of `ADD/SB(0-6)` from `ADD/SB(7)`, and the
-hold register and flags keeping their values while their inputs change.
-
-The proof assumes both clocks start low.
+The random logic only loads A and B outside Phi2, so the proof assumes the
+same. It also assumes at most one load per register and at most one operation
+at a time, since the other proofs above already cover several at once. Every
+input changes only as a phase starts. Cover checks walk complete operations
+through the core: 0x7F + 0x01 overflowing to 0x80 on SB, a carry out onto
+ADL, a subtraction through `NOT(DB)/ADD`, `ROR`'s split of `ADD/SB(0-6)` from
+`ADD/SB(7)`, and the hold register and flags keeping their values while A and
+B load new operands.
 
 ### Not verified
 
-- What a real chip does when two clock edges arrive on the same formal step.
-  The proofs use the netlist's behavior, where every register samples its
-  inputs from just before the edge.
+- Clock timings a real clock generator never produces. The register proofs
+  run on the metaclock alone, and the @ref logic_core proof on real Phi1/Phi2
+  phases of 3 to 7 metaclock cycles (see @ref metaclock).
 - Decimal mode. The proof only confirms that `DAA` is ignored, which matches
   this implementation (see the to-do list below), not a real 6502 in decimal
   mode.

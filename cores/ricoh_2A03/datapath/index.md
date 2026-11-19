@@ -66,9 +66,9 @@ while it's disabled, the same as an undriven, precharged bus.
 | @ref data_input_latch | `data_input_latch_formal.sv` | metaclock only |
 | @ref data_output_latch | `data_output_latch_formal.sv` | metaclock only |
 | @ref stack_pointer | `stack_pointer_formal.sv` | metaclock only |
-| @ref status_register | `status_register_formal.sv` | metaclock only |
-| @ref program_counter_low | `program_counter_low_formal.sv` | `multiclock on`: the metaclock, with Phi2 changing freely |
-| @ref program_counter_high | `program_counter_high_formal.sv` | `multiclock on`: the metaclock, with Phi2 changing freely |
+| @ref status_register | `status_register_formal.sv` | real Phi1/Phi2 phases of 3-7 metaclock cycles (`two_phase_clock.sv`) |
+| @ref program_counter_low | `program_counter_low_formal.sv` | real Phi1/Phi2 phases of 3-7 metaclock cycles (`two_phase_clock.sv`) |
+| @ref program_counter_high | `program_counter_high_formal.sv` | real Phi1/Phi2 phases of 3-7 metaclock cycles (`two_phase_clock.sv`) |
 | @ref bus_multiplexer | `bus_multiplexer_formal.sv` | combinational, one instant |
 | @ref mos_6502_datapath | `datapath_formal.sv` | `multiclock on`: the metaclock, Phi1 and Phi2, each changing freely |
 
@@ -97,8 +97,10 @@ one (as JSR needs).
 
 ### status_register
 
-On every metaclock edge while Phi1 was high, each flag loads from its one
-selected source:
+The proof runs phase by phase, with real Phi1/Phi2 clocks, and reads each flag
+at the end of a phase. It keeps no model of the register: the flags are
+outputs, so each one is checked against its own value at the end of the phase
+before. During Phi1, each flag loads from its selected sources:
 
 - C: DB bit 0 (`DB0/C`), IR5 (`IR5/C`) or ACR (`ACR/C`)
 - Z: DB bit 1 (`DB1/Z`) or whether DB is 0 (`DBZ/Z`)
@@ -107,25 +109,32 @@ selected source:
 - V: DB bit 6 (`DB6/V`), AVR (`AVR/V`), 1 (`1/V`) or 0 (`0/V`)
 - N: DB bit 7 (`DB7/N`)
 
-A flag holds its value when none of its sources is selected, when more than one
-is, or while Phi1 is low. `I_OUT` is I or `BRK6E`, and every other `*_OUT` is
-its flag. `P/DB` pushes N, V, 1, `B_OUT`, D, I, Z, C (bit 7 to bit 0).
+When more than one source is selected, the flag loads their AND, as the real
+chip's latch node does: a 0 from any of them wins. A flag holds when none of
+its sources is selected, and every flag holds through Phi2. `I_OUT` is I or
+`BRK6E`, and every other `*_OUT` is its flag. `I_OUT` hides the I latch during
+`BRK6E`, so the harness follows the latch by the rule above. `P/DB` pushes N,
+V, 1, `B_OUT`, D, I, Z, C (bit 7 to bit 0).
 
 ### program_counter_low and program_counter_high
 
-- On every metaclock edge, the select register takes PCL (`PCL/PCL`), or else
-  ADL (`ADL/PCL`), or else holds. PCHS works the same way with PCH
-  (`PCH/PCH`) and ADH (`ADH/PCH`).
-- On every metaclock edge while Phi2 was high, PCL takes PCLS + `1/PC`, and
-  PCH takes PCHS + PCLC, each from just before the edge, and they hold while
-  Phi2 is low. So, like the real latches, they keep the value from the last
-  metaclock edge of Phi2. Both wrap from 0xFF to 0x00, so the
-  program counter wraps from 0xFFFF to 0x0000.
+The proofs run phase by phase, with real Phi1/Phi2 clocks. The select
+registers and the program counter registers aren't outputs (PCL and PCH only
+show through their bus ports), so the harness follows them a phase at a time:
+
+- During Phi1, PCLS takes PCL (`PCL/PCL`) or ADL (`ADL/PCL`), and holds while
+  neither is selected. PCHS works the same way with PCH (`PCH/PCH`) and ADH
+  (`ADH/PCH`). Both hold through Phi2.
+- During Phi2, PCL takes PCLS + `1/PC`, and PCH takes PCHS + PCLC. Both hold
+  through Phi1. Both wrap from 0xFF to 0x00, so the program counter wraps from
+  0xFFFF to 0x0000.
 - PCLC is set exactly when `1/PC` is high and PCLS is 0xFF.
 - `PCL/DB`, `PCL/ADL`, `PCH/DB` and `PCH/ADH` drive the register's value.
 
-The model of PCH is a plain 8-bit increment, so the proof also shows that the
-design's two nibble incrementers carry into each other correctly.
+The random logic selects a select register's source only outside Phi2, and
+never both sources at once (they're complements), so the proofs assume the
+same. The PCH property is a plain 8-bit increment, so the proof also shows
+that the design's two nibble incrementers carry into each other correctly.
 
 ### bus_multiplexer
 

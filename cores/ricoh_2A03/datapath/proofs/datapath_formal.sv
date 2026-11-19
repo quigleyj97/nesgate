@@ -1,28 +1,46 @@
-// End-to-end properties of the datapath: every register, wired to the SB,
-// DB, ADH and ADL buses through the bus multiplexer, as synthesis sees it.
+// End-to-end properties of the datapath, phase by phase, with real Phi1/Phi2
+// clocks (two_phase_clock.sv): every register, wired to the SB, DB, ADH and
+// ADL buses through the bus multiplexer, as synthesis sees it.
 //
-// Every latch in the datapath is on the metaclock. The proof runs with
-// SymbiYosys's multiclock mode so that the metaclock is an ordinary input:
-// every step is a tick of the global formal clock, and the
-// metaclock, Phi1 and Phi2 are ordinary inputs that can change on any step,
-// in any order, independently of each other.
+// The harness keeps no model of the netlist's registers or of the bus
+// multiplexer. The four buses, the address pins, the data pins and the flags
+// are outputs, so each property relates them at the end of a phase to that
+// phase's inputs and to the outputs at the end of the phase before. Every
+// register loads from the bus the datapath reads, as the DUT's own bus
+// outputs show it. The registers that aren't outputs (A, X, Y, the stack
+// pointer's two latches, DL, the data output register, PCLS, PCHS, PCL, PCH
+// and the I latch) are followed as their documentation defines them, a phase
+// at a time:
 //
-// The harness keeps a model of every register and checks every output
-// against it on every step. Each register in the model keeps the value it
-// would take on its next clock edge, computed from the step before, like the
-// netlist's registers. The registers that aren't outputs are checked through
-// the buses they drive.
+// - A, X, Y and the stack pointer's input latch take SB (SB/AC, SB/X, SB/Y,
+//   SB/S), and hold otherwise. The stack pointer's output latch, S, takes the
+//   input latch during Phi2.
+// - DL takes the data pins during Phi2, and the data output register takes
+//   DB during Phi1. The data pins drive the data output register during Phi2
+//   of a write (R/W low), and read all ones otherwise.
+// - The address bus registers take ADH (ADH/ABH) and ADL (ADL/ABL) during
+//   Phi1, and hold otherwise.
+// - During Phi1, PCLS takes PCL (PCL/PCL) or ADL (ADL/PCL), and PCHS takes
+//   PCH (PCH/PCH) or ADH (ADH/PCH). During Phi2, PCL takes PCLS + 1/PC, and
+//   PCH takes PCHS plus the carry out of that.
+// - The flags load during Phi1 from DB, IR5, ACR and AVR, each from the AND
+//   of its selected sources, as in status_register_formal.sv, and hold
+//   otherwise. I_OUT is the I latch or BRK6E.
+// - Each bus is a precharged wired-AND node: it reads the AND of every driver
+//   on it, inside the datapath and outside it (drive_*), and a driver that
+//   isn't enabled puts all ones on it. The open drain MOSFETs (0/ADL0-2,
+//   0/ADH0, 0/ADH(1-7)) are drivers that put 0 on their bits. SB/DB and
+//   SB/ADH join SB with DB and ADH into one node. Unofficial opcodes like SBX
+//   rely on this.
 //
-// Any number of drivers can be enabled on a bus at once, inside the datapath
-// or outside it (drive_*): the bus reads their wired-AND, as on the real chip.
-// Unofficial opcodes like SBX rely on this.
-//
-// Every subunit drives all ones while it isn't enabled, and the datapath ANDs
-// each bus's drivers together, so an undriven bus reads all ones.
+// The random logic loads A, X, Y and the stack pointer's input latch only
+// outside Phi2, never selects both of PCLS's or both of PCHS's sources, and
+// never pushes P (P/DB) while DBZ/Z loads Z from DB during Phi1, which would
+// loop Z through an inverter. The harness assumes the same. Each input changes only as a phase starts.
+// Everything powers up as 0.
 module datapath_formal (
     input metaclock,
-    input phi1,
-    input phi2,
+    input end_phase,
 
     input [7:0] data_in,
     input [7:0] drive_sb,
@@ -85,6 +103,16 @@ module datapath_formal (
     input brk6e,
     input b_out
 );
+    wire phi1, phi2, first_edge, last_edge;
+    two_phase_clock clock (
+        .metaclock(metaclock),
+        .end_phase(end_phase),
+        .phi1(phi1),
+        .phi2(phi2),
+        .first_edge(first_edge),
+        .last_edge(last_edge)
+    );
+
     wire [7:0] data_out;
     wire [15:0] address;
     wire [7:0] bus_sb, bus_db, bus_adh, bus_adl;
@@ -165,50 +193,99 @@ module datapath_formal (
         .negative_flag_N_OUT(n_out)
     );
 
-    // #region Clocks
+    // #region Inputs
+    wire [91:0] f_inputs = {data_in, drive_sb, drive_db, drive_adh, drive_adl,
+        sb_db, sb_adh, zero_adl0, zero_adl1, zero_adl2, zero_adh0, zero_adh_1_7,
+        sb_ac, ac_sb, ac_db, sb_x, x_sb, sb_y, y_sb, sb_s, s_sb, s_adl,
+        adh_abh, adl_abl, pcl_pcl, adl_pcl, i_pc, pcl_db, pcl_adl,
+        pch_pch, adh_pch, pch_db, pch_adh, dl_db, dl_adl, dl_adh, r_not_w,
+        p_db, ir5, acr, avr, db0_c, ir5_c, acr_c, db1_z, dbz_z, db2_i, ir5_i,
+        db3_d, ir5_d, db6_v, avr_v, one_v, zero_v, db7_n, brk6e, b_out};
+
+    // Each input only changes as a phase starts
     reg f_past_valid = 1'b0;
-    reg f_metaclock_was = 1'b0;
-    wire f_metaclock_rose = metaclock && !f_metaclock_was;
+    reg [91:0] f_inputs_was = 92'b0;
+    always @(posedge metaclock) begin
+        f_past_valid <= 1'b1;
+        f_inputs_was <= f_inputs;
+    end
+    always @* begin
+        if (f_past_valid && !first_edge) begin
+            assume_inputs_hold: assume (f_inputs == f_inputs_was);
+        end
+        if (phi2) begin
+            assume_no_sb_load_phi2: assume (!sb_ac && !sb_x && !sb_y && !sb_s);
+        end
+        assume_one_pcl_source: assume (!(pcl_pcl && adl_pcl));
+        assume_one_pch_source: assume (!(pch_pch && adh_pch));
+        // P on DB while DBZ/Z loads Z from DB would loop Z through an
+        // inverter, and oscillate
+        if (phi1) begin
+            assume_no_dbz_push: assume (!(p_db && dbz_z));
+        end
+    end
     // #endregion
 
     // #region Registers
-    // Each register as it was on the step before (_was), and the value it
-    // would have taken on an edge (_next_was). All of them power up as 0.
-    reg [7:0] f_ac_was = 8'b0, f_ac_next_was = 8'b0;
-    reg [7:0] f_x_was = 8'b0, f_x_next_was = 8'b0;
-    reg [7:0] f_y_was = 8'b0, f_y_next_was = 8'b0;
-    reg [7:0] f_s_in_was = 8'b0, f_s_in_next_was = 8'b0;
-    reg [7:0] f_s_was = 8'b0, f_s_next_was = 8'b0;
-    reg [5:0] f_p_was = 6'b0, f_p_next_was = 6'b0;
-    reg [7:0] f_abh_was = 8'b0, f_abh_next_was = 8'b0;
-    reg [7:0] f_abl_was = 8'b0, f_abl_next_was = 8'b0;
-    reg [7:0] f_dl_was = 8'b0, f_dl_next_was = 8'b0;
-    reg [7:0] f_dor_was = 8'b0, f_dor_next_was = 8'b0;
-    reg [7:0] f_pcls_was = 8'b0, f_pcls_next_was = 8'b0;
-    reg [7:0] f_pchs_was = 8'b0, f_pchs_next_was = 8'b0;
-    reg [7:0] f_pcl_was = 8'b0, f_pcl_next_was = 8'b0;
-    reg [7:0] f_pch_was = 8'b0, f_pch_next_was = 8'b0;
+    // Each register as it was at the end of the phase before. All of them
+    // power up as 0.
+    reg [7:0] f_ac = 8'b0, f_x = 8'b0, f_y = 8'b0;
+    reg [7:0] f_s_in = 8'b0, f_s = 8'b0;
+    reg [7:0] f_dl = 8'b0, f_dor = 8'b0;
+    reg [7:0] f_pcls = 8'b0, f_pchs = 8'b0, f_pcl = 8'b0, f_pch = 8'b0;
+    reg f_i = 1'b0;
+    // The outputs at the end of the phase before
+    reg [15:0] f_address_phase = 16'b0;
+    reg [4:0] f_flags_phase = 5'b0;
 
-    // Every latch is on the metaclock
-    wire [7:0] f_ac = f_metaclock_rose ? f_ac_next_was : f_ac_was;
-    wire [7:0] f_x = f_metaclock_rose ? f_x_next_was : f_x_was;
-    wire [7:0] f_y = f_metaclock_rose ? f_y_next_was : f_y_was;
-    wire [7:0] f_s_in = f_metaclock_rose ? f_s_in_next_was : f_s_in_was;
-    wire [7:0] f_s = f_metaclock_rose ? f_s_next_was : f_s_was;
-    wire [5:0] f_p = f_metaclock_rose ? f_p_next_was : f_p_was;
-    wire [7:0] f_abh = f_metaclock_rose ? f_abh_next_was : f_abh_was;
-    wire [7:0] f_abl = f_metaclock_rose ? f_abl_next_was : f_abl_was;
-    wire [7:0] f_dl = f_metaclock_rose ? f_dl_next_was : f_dl_was;
-    wire [7:0] f_dor = f_metaclock_rose ? f_dor_next_was : f_dor_was;
-    wire [7:0] f_pcls = f_metaclock_rose ? f_pcls_next_was : f_pcls_was;
-    wire [7:0] f_pchs = f_metaclock_rose ? f_pchs_next_was : f_pchs_was;
-    wire [7:0] f_pcl = f_metaclock_rose ? f_pcl_next_was : f_pcl_was;
-    wire [7:0] f_pch = f_metaclock_rose ? f_pch_next_was : f_pch_was;
+    // Each register at the end of this phase, from this phase's inputs and
+    // the buses as the datapath reads them
+    wire [7:0] f_ac_now = sb_ac ? bus_sb : f_ac;
+    wire [7:0] f_x_now = sb_x ? bus_sb : f_x;
+    wire [7:0] f_y_now = sb_y ? bus_sb : f_y;
+    wire [7:0] f_s_in_now = sb_s ? bus_sb : f_s_in;
+    wire [7:0] f_s_now = phi2 ? f_s_in : f_s;
+    wire [7:0] f_dl_now = phi2 ? data_in : f_dl;
+    wire [7:0] f_dor_now = phi1 ? bus_db : f_dor;
+    wire [7:0] f_pcls_now = phi1 && pcl_pcl ? f_pcl
+        : phi1 && adl_pcl ? bus_adl : f_pcls;
+    wire [7:0] f_pchs_now = phi1 && pch_pch ? f_pch
+        : phi1 && adh_pch ? bus_adh : f_pchs;
+    wire [8:0] f_pcl_incremented = {1'b0, f_pcls} + {8'b0, i_pc};
+    wire [7:0] f_pcl_now = phi2 ? f_pcl_incremented[7:0] : f_pcl;
+    wire [7:0] f_pch_now = phi2 ? f_pchs + {7'b0, f_pcl_incremented[8]} : f_pch;
+    wire [15:0] f_address_now = {
+        phi1 && adh_abh ? bus_adh : f_address_phase[15:8],
+        phi1 && adl_abl ? bus_adl : f_address_phase[7:0]};
+    // #endregion
 
-    // The flags, in the order they're pushed (N V D I Z C, leaving out bits
-    // 5 and 4)
-    wire f_n = f_p[5], f_v = f_p[4], f_d = f_p[3];
-    wire f_i = f_p[2], f_z = f_p[1], f_c = f_p[0];
+    // #region Flags
+    // What a source puts on a flag's input node: its value while selected,
+    // or 1 (released) while not
+    function source(input selected, input value);
+        source = value || !selected;
+    endfunction
+
+    wire f_c_was = f_flags_phase[0], f_z_was = f_flags_phase[1];
+    wire f_d_was = f_flags_phase[2], f_v_was = f_flags_phase[3];
+    wire f_n_was = f_flags_phase[4];
+    wire f_c_now = phi1 && (db0_c || ir5_c || acr_c)
+        ? source(db0_c, bus_db[0]) && source(ir5_c, ir5) && source(acr_c, acr)
+        : f_c_was;
+    wire f_z_now = phi1 && (db1_z || dbz_z)
+        ? source(db1_z, bus_db[1]) && source(dbz_z, bus_db == 8'b0)
+        : f_z_was;
+    wire f_i_now = phi1 && (db2_i || ir5_i)
+        ? source(db2_i, bus_db[2]) && source(ir5_i, ir5)
+        : phi1 && brk6e ? 1'b1 : f_i;
+    wire f_d_now = phi1 && (db3_d || ir5_d)
+        ? source(db3_d, bus_db[3]) && source(ir5_d, ir5)
+        : f_d_was;
+    wire f_v_now = phi1 && (db6_v || avr_v || one_v || zero_v)
+        ? source(db6_v, bus_db[6]) && source(avr_v, avr) && !zero_v
+        : f_v_was;
+    wire f_n_now = phi1 && db7_n ? bus_db[7] : f_n_was;
+    wire [4:0] f_flags = {n_out, v_out, d_out, z_out, c_out};
     // #endregion
 
     // #region Buses
@@ -218,147 +295,112 @@ module datapath_formal (
         when_enabled = enable ? value : 8'hff;
     endfunction
 
-    wire [7:0] f_pushed_p = {f_n, f_v, 1'b1, b_out, f_d, f_i, f_z, f_c};
+    wire [7:0] f_pushed_p = {n_out, v_out, 1'b1, b_out, d_out, f_i_now, z_out, c_out};
 
-    // Everything in the datapath driving each bus, wired-AND together
-    wire [7:0] f_drivers_sb = when_enabled(ac_sb, f_ac)
-        & when_enabled(x_sb, f_x)
-        & when_enabled(y_sb, f_y)
-        & when_enabled(s_sb, f_s);
-    wire [7:0] f_drivers_db = when_enabled(ac_db, f_ac)
+    // Everything driving each bus on its own, wired-AND together
+    wire [7:0] f_on_sb = drive_sb
+        & when_enabled(ac_sb, f_ac_now)
+        & when_enabled(x_sb, f_x_now)
+        & when_enabled(y_sb, f_y_now)
+        & when_enabled(s_sb, f_s_now);
+    wire [7:0] f_on_db = drive_db
+        & when_enabled(ac_db, f_ac_now)
         & when_enabled(p_db, f_pushed_p)
-        & when_enabled(dl_db, f_dl)
-        & when_enabled(pcl_db, f_pcl)
-        & when_enabled(pch_db, f_pch);
-    wire [7:0] f_drivers_adh = when_enabled(dl_adh, f_dl)
-        & when_enabled(pch_adh, f_pch);
-    wire [7:0] f_drivers_adl = when_enabled(s_adl, f_s)
-        & when_enabled(dl_adl, f_dl)
-        & when_enabled(pcl_adl, f_pcl);
-
-    // The bus multiplexer, as in bus_multiplexer_formal.sv: a bit reads 0
-    // exactly when something on its node pulls it low
-    wire [7:0] f_low_sb = ~f_drivers_sb | ~drive_sb;
-    wire [7:0] f_low_db = ~f_drivers_db | ~drive_db;
-    wire [7:0] f_low_adh = ~f_drivers_adh | ~drive_adh
-        | {{7{zero_adh_1_7}}, zero_adh0};
-    wire [7:0] f_low_adl = ~f_drivers_adl | ~drive_adl
-        | {5'b0, zero_adl2, zero_adl1, zero_adl0};
-    wire [7:0] f_low_sb_node = f_low_sb
-        | (sb_db ? f_low_db : 8'b0)
-        | (sb_adh ? f_low_adh : 8'b0);
-
-    wire [7:0] f_sb = ~f_low_sb_node;
-    wire [7:0] f_db = ~(sb_db ? f_low_sb_node : f_low_db);
-    wire [7:0] f_adh = ~(sb_adh ? f_low_sb_node : f_low_adh);
-    wire [7:0] f_adl = ~f_low_adl;
+        & when_enabled(dl_db, f_dl_now)
+        & when_enabled(pcl_db, f_pcl_now)
+        & when_enabled(pch_db, f_pch_now);
+    wire [7:0] f_on_adh = drive_adh
+        & when_enabled(dl_adh, f_dl_now)
+        & when_enabled(pch_adh, f_pch_now)
+        & when_enabled(zero_adh0, 8'hfe)
+        & when_enabled(zero_adh_1_7, 8'h01);
+    wire [7:0] f_on_adl = drive_adl
+        & when_enabled(s_adl, f_s_now)
+        & when_enabled(dl_adl, f_dl_now)
+        & when_enabled(pcl_adl, f_pcl_now)
+        & when_enabled(zero_adl0, 8'hfe)
+        & when_enabled(zero_adl1, 8'hfd)
+        & when_enabled(zero_adl2, 8'hfb);
+    // SB/DB and SB/ADH join SB with DB and ADH into one node
+    wire [7:0] f_sb_node = f_on_sb
+        & when_enabled(sb_db, f_on_db)
+        & when_enabled(sb_adh, f_on_adh);
     // #endregion
 
-    // #region Next values
-    // The status register, as in status_register_formal.sv: each flag loads
-    // from its one selected source during Phi1, and holds otherwise
-    wire [1:0] f_c_sources = db0_c + ir5_c + acr_c;
-    wire [1:0] f_i_sources = db2_i + ir5_i;
-    wire [2:0] f_v_sources = db6_v + avr_v + one_v + zero_v;
-    wire f_c_next = phi1 && f_c_sources == 1
-        ? (db0_c ? f_db[0] : ir5_c ? ir5 : acr) : f_c;
-    wire f_z_next = phi1 && db1_z != dbz_z
-        ? (db1_z ? f_db[1] : f_db == 8'b0) : f_z;
-    wire f_i_next = phi1 && f_i_sources == 1 ? (db2_i ? f_db[2] : ir5)
-        : phi1 && brk6e ? 1'b1 : f_i;
-    wire f_d_next = phi1 && db3_d != ir5_d ? (db3_d ? f_db[3] : ir5) : f_d;
-    wire f_v_next = phi1 && f_v_sources == 1
-        ? (db6_v ? f_db[6] : avr_v ? avr : one_v) : f_v;
-    wire f_n_next = phi1 && db7_n ? f_db[7] : f_n;
-
-    // The increment logic of PCL and PCH
-    wire [8:0] f_pcl_incremented = {1'b0, f_pcls} + {8'b0, i_pc};
-    wire f_pclc = f_pcl_incremented[8];
-
-    always @($global_clock) begin
-        f_past_valid <= 1'b1;
-        f_metaclock_was <= metaclock;
-
-        f_ac_was <= f_ac;
-        f_x_was <= f_x;
-        f_y_was <= f_y;
-        f_s_in_was <= f_s_in;
-        f_s_was <= f_s;
-        f_p_was <= f_p;
-        f_abh_was <= f_abh;
-        f_abl_was <= f_abl;
-        f_dl_was <= f_dl;
-        f_dor_was <= f_dor;
-        f_pcls_was <= f_pcls;
-        f_pchs_was <= f_pchs;
-        f_pcl_was <= f_pcl;
-        f_pch_was <= f_pch;
-
-        // A, X, Y and the stack pointer's input latch load from SB
-        f_ac_next_was <= sb_ac ? f_sb : f_ac;
-        f_x_next_was <= sb_x ? f_sb : f_x;
-        f_y_next_was <= sb_y ? f_sb : f_y;
-        f_s_in_next_was <= sb_s ? f_sb : f_s_in;
-        // The stack pointer's output latch loads from its input latch during
-        // Phi2
-        f_s_next_was <= phi2 ? f_s_in : f_s;
-        f_p_next_was <= {f_n_next, f_v_next, f_d_next, f_i_next, f_z_next, f_c_next};
-        // The address bus registers load from ADH and ADL during Phi1
-        f_abh_next_was <= phi1 && adh_abh ? f_adh : f_abh;
-        f_abl_next_was <= phi1 && adl_abl ? f_adl : f_abl;
-        // The data input latch follows the pins during Phi2, and the data
-        // output register follows DB during Phi1
-        f_dl_next_was <= phi2 ? data_in : f_dl;
-        f_dor_next_was <= phi1 ? f_db : f_dor;
-        // The program counter select registers load during Phi1
-        f_pcls_next_was <= phi1 && pcl_pcl ? f_pcl
-            : phi1 && adl_pcl ? f_adl : f_pcls;
-        f_pchs_next_was <= phi1 && pch_pch ? f_pch
-            : phi1 && adh_pch ? f_adh : f_pchs;
-        // PCL and PCH take the incremented select registers during Phi2
-        f_pcl_next_was <= phi2 ? f_pcl_incremented[7:0] : f_pcl;
-        f_pch_next_was <= phi2 ? f_pchs + {7'b0, f_pclc} : f_pch;
+    always @(posedge metaclock) begin
+        if (last_edge) begin
+            f_ac <= f_ac_now;
+            f_x <= f_x_now;
+            f_y <= f_y_now;
+            f_s_in <= f_s_in_now;
+            f_s <= f_s_now;
+            f_dl <= f_dl_now;
+            f_dor <= f_dor_now;
+            f_pcls <= f_pcls_now;
+            f_pchs <= f_pchs_now;
+            f_pcl <= f_pcl_now;
+            f_pch <= f_pch_now;
+            f_i <= f_i_now;
+            f_address_phase <= address;
+            f_flags_phase <= f_flags;
+        end
     end
-    // #endregion
 
     always @* begin
-        if (!f_past_valid) begin
-            assume_power_up: assume (!metaclock && !phi2);
+        // The end of each phase, once every register has settled
+        if (last_edge) begin
+            check_sb: assert (bus_sb == f_sb_node);
+            check_db: assert (bus_db == (sb_db ? f_sb_node : f_on_db));
+            check_adh: assert (bus_adh == (sb_adh ? f_sb_node : f_on_adh));
+            check_adl: assert (bus_adl == f_on_adl);
+            check_address: assert (address == f_address_now);
+            check_c: assert (c_out == f_c_now);
+            check_z: assert (z_out == f_z_now);
+            check_i: assert (i_out == (f_i_now || brk6e));
+            check_d: assert (d_out == f_d_now);
+            check_v: assert (v_out == f_v_now);
+            check_n: assert (n_out == f_n_now);
         end
+        // The address pins and the flags hold through Phi2, and the data pins
+        // drive the data output register through Phi2 of a write
+        if (phi2) begin
+            check_address_phi2: assert (address == f_address_phase);
+            check_flags_phi2: assert (f_flags == f_flags_phase);
+            check_data_out_phi2: assert (data_out == when_enabled(!r_not_w, f_dor));
+        end else begin
+            check_data_out_phi1: assert (data_out == 8'hff);
+        end
+    end
 
-        check_sb: assert (bus_sb == f_sb);
-        check_db: assert (bus_db == f_db);
-        check_adh: assert (bus_adh == f_adh);
-        check_adl: assert (bus_adl == f_adl);
-        check_address: assert (address == {f_abh, f_abl});
-        check_data_out: assert (data_out == (!r_not_w && phi2 ? f_dor : 8'hff));
-        check_c: assert (c_out == f_c);
-        check_z: assert (z_out == f_z);
-        check_i: assert (i_out == (f_i || brk6e));
-        check_d: assert (d_out == f_d);
-        check_v: assert (v_out == f_v);
-        check_n: assert (n_out == f_n);
-
-        // TAX: A onto SB, into X, then X back out
-        reach_transfer: cover (f_past_valid && x_sb && !ac_sb && !y_sb && !s_sb
-            && !sb_db && !sb_adh && drive_sb == 8'hff
-            && bus_sb == 8'h5a && f_ac == 8'h5a);
-        // A byte read from the pins reaches the address bus through DL and ADL
-        reach_read_to_address: cover (address[7:0] == 8'ha5 && address[15:8] == 8'h00);
-        // PC increments into the address bus, carrying from PCL into PCH
-        reach_pc_carry: cover (f_pch == 8'h01 && f_pcl == 8'h00 && pch_adh && pcl_adl
-            && bus_adh == 8'h01 && bus_adl == 8'h00);
-        // A store: X through SB/DB into the data output register, then out
-        reach_store: cover (data_out == 8'h3c && !phi1 && phi2 && f_x == 8'h3c);
-        // The flags from DB, as PLP sets them
-        reach_plp: cover ({n_out, v_out, d_out, i_out, z_out, c_out} == 6'b110011
-            && !brk6e);
-        // An ALU result on SB, through SB/ADH onto ADH
-        reach_sb_adh: cover (sb_adh && !sb_db && drive_adh == 8'hff
-            && !dl_adh && !pch_adh && bus_adh == 8'h42 && drive_sb == 8'h42);
-        // A and X on SB at once read their wired-AND, as SBX needs
-        reach_two_drivers: cover (ac_sb && x_sb && !y_sb && !s_sb && !sb_db
-            && !sb_adh && drive_sb == 8'hff && f_ac == 8'hf0 && f_x == 8'h3c
-            && bus_sb == 8'h30);
+    always @* begin
+        if (last_edge) begin
+            // TAX: A onto SB, into X, then X back out
+            reach_transfer: cover (x_sb && !ac_sb && !y_sb && !s_sb
+                && !sb_db && !sb_adh && drive_sb == 8'hff
+                && bus_sb == 8'h5a && f_ac == 8'h5a);
+            // A byte read from the pins reaches the address bus through DL
+            // and ADL
+            reach_read_to_address: cover (address == 16'h00a5 && f_dl == 8'ha5);
+            // PC increments onto the address buses, carrying from PCL into PCH
+            reach_pc_carry: cover (phi1 && f_pch == 8'h01 && f_pcl == 8'h00
+                && pch_adh && pcl_adl && bus_adh == 8'h01 && bus_adl == 8'h00);
+            // A store: X through SB/DB into the data output register, then out
+            reach_store: cover (phi2 && data_out == 8'h3c && f_x == 8'h3c);
+            // The flags from DB, as PLP sets them
+            reach_plp: cover (phi1 && db0_c && db1_z && db2_i && db3_d && db6_v
+                && db7_n && !brk6e
+                && {n_out, v_out, d_out, i_out, z_out, c_out} == 6'b110011);
+            // An ALU result on SB, through SB/ADH onto ADH
+            reach_sb_adh: cover (sb_adh && !sb_db && drive_adh == 8'hff
+                && !dl_adh && !pch_adh && !zero_adh0 && !zero_adh_1_7
+                && bus_adh == 8'h42 && drive_sb == 8'h42);
+            // A and X on SB at once read their wired-AND, as SBX needs
+            reach_two_drivers: cover (ac_sb && x_sb && !y_sb && !s_sb && !sb_db
+                && !sb_adh && drive_sb == 8'hff && f_ac == 8'hf0 && f_x == 8'h3c
+                && bus_sb == 8'h30);
+            // The NMI vector's low byte, from the open drain MOSFETs alone
+            reach_vector: cover (bus_adl == 8'hfa && drive_adl == 8'hff
+                && !s_adl && !dl_adl && !pcl_adl);
+        end
     end
 endmodule
