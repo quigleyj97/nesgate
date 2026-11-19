@@ -41,7 +41,7 @@ and the whole decoder against the documented cycle count of every opcode.
 | @ref ready_controller | `ready_controller_formal.sv` | metaclock, with Phi1 and Phi2 changing freely |
 | @ref interrupt_controller | `interrupt_controller_formal.sv` | metaclock, with Phi1 and Phi2 changing freely |
 | @ref random_logic_controller | `random_logic_controller_formal.sv` | metaclock, with Phi1 and Phi2 changing freely |
-| All eight, wired together | `decoder_formal.sv` | metaclock, with real Phi1/Phi2 phases of 3 or 4 metaclock cycles |
+| All eight, wired together | `decoder_formal.sv` | metaclock, with real Phi1/Phi2 phases of 3 to 7 metaclock cycles |
 
 In the unit proofs, Phi1 and Phi2 can change on any metaclock edge, and can
 even be high at once, so they cover timings a real clock generator never
@@ -118,7 +118,9 @@ below, and to the CPU testbench.
 ### The decoder
 
 The harness makes real clocks: Phi1 and Phi2 alternate, never overlap, and
-each phase lasts 3 or 4 metaclock cycles. `/RES` is held low for the first 3
+each phase lasts anywhere from 3 metaclock cycles (the fewest @ref metaclock
+allows) to 7 (the top level's `METACLOCKS_PER_PHASE`), chosen freely for every
+phase. `/RES` is held low for the first 3
 cycles, as at power-on. The data bus, and so every opcode and operand, is free
 on every metaclock edge. So are the flags, the branch direction on DB, and the
 ALU carry (page crossings), but each only changes when its source can: the

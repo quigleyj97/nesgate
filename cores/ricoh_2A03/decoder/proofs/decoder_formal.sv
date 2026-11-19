@@ -3,8 +3,9 @@
 // interrupt and random logic controllers, wired together as in mos_6502.
 //
 // Unlike the unit proofs, this harness makes its own Phi1 and Phi2, as the
-// real clock does: they alternate, never overlap, and each phase lasts 3 or 4
-// metaclock cycles (clocks.md). The CPU starts with /RES held low for its
+// real clock does: they alternate, never overlap, and each phase lasts anywhere from 3
+// metaclock cycles (the fewest clocks.md allows) to 7 (the top level's
+// METACLOCKS_PER_PHASE), chosen freely for every phase. The CPU starts with /RES held low for its
 // first 3 cycles, as at power-on. The data bus, and so every opcode and
 // operand, is free on every metaclock edge. So are the flags, the DB bus
 // (branch direction) and the ALU carry (page crossings), except that each
@@ -32,7 +33,7 @@ module decoder_formal #(
     parameter CLEAN = 1
 ) (
     input metaclock,
-    input long_phase,
+    input end_phase,
 
     input [7:0] data_in,
     input rdy,
@@ -52,11 +53,15 @@ module decoder_formal #(
     // #region Clocks
     reg phi1 = 1'b1;
     reg phi2 = 1'b0;
-    // The metaclock edges so far in this phase, counting this one
+    // The metaclock edges so far in this phase, counting this one. A phase
+    // can end on any edge from the 3rd to the 7th.
+    localparam MIN_PHASE_EDGES = 3'd3;
+    localparam MAX_PHASE_EDGES = 3'd7;
     reg [2:0] f_phase_edges = 3'd1;
     wire f_phase_start = f_phase_edges == 3'd1;
     always @(posedge metaclock) begin
-        if (f_phase_edges == 3'd4 || (f_phase_edges == 3'd3 && !long_phase)) begin
+        if (f_phase_edges == MAX_PHASE_EDGES
+            || (f_phase_edges >= MIN_PHASE_EDGES && end_phase)) begin
             phi1 <= !phi1;
             phi2 <= !phi2;
             f_phase_edges <= 3'd1;

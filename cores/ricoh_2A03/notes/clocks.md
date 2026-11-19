@@ -48,4 +48,5 @@ Some latches feed other latches of the same phase through logic, as they do on
 the real chip while both are open. With the metaclock, the second latch settles
 a metaclock after the first, and the chains in the @ref interrupt_controller
 and @ref random_logic_controller are up to two latches deep. So each phase must
-last at least three metaclock cycles. The testbenches use four.
+last at least three metaclock cycles. The testbenches use four, the top level
+uses seven, and the decoder proof checks every length from three to seven.
