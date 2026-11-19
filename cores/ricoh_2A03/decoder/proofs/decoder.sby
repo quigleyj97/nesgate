@@ -3,12 +3,15 @@ clean_prove clean prove
 clean_cover clean cover
 free_prove free prove
 free_cover free cover
+interrupts_prove interrupts prove
+interrupts_cover interrupts cover
 
 [options]
 prove: mode prove
 cover: mode cover
 clean_cover: depth 130
 free_cover: depth 130
+interrupts_cover: depth 130
 
 [engines]
 prove: abc pdr
@@ -26,6 +29,7 @@ read_verilog random_logic_controller.v
 read_verilog -formal -sv decoder_formal.sv
 clean: chparam -set CLEAN 1 decoder_formal
 free: chparam -set CLEAN 0 decoder_formal
+interrupts: chparam -set CLEAN 0 -set INTERRUPTS 1 decoder_formal
 prep -top decoder_formal
 check -assert
 

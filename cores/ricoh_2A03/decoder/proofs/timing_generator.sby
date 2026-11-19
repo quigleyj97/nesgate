@@ -5,7 +5,7 @@ cover
 [options]
 prove: mode prove
 cover: mode cover
-cover: depth 24
+cover: depth 60
 
 [engines]
 prove: abc pdr
@@ -13,10 +13,12 @@ cover: smtbmc z3
 
 [script]
 read_verilog timing_generator.v
+read_verilog -formal -sv two_phase_clock.sv
 read_verilog -formal -sv timing_generator_formal.sv
 prep -top timing_generator_formal
 check -assert
 
 [files]
 formal/timing_generator.v
+../cores/ricoh_2A03/decoder/proofs/two_phase_clock.sv
 ../cores/ricoh_2A03/decoder/proofs/timing_generator_formal.sv

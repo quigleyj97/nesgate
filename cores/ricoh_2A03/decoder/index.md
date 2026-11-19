@@ -37,15 +37,30 @@ and the whole decoder against the documented cycle count of every opcode.
 | @ref predecode_logic | `predecode_logic_formal.sv` | combinational, one instant |
 | @ref instruction_register | `instruction_register_formal.sv` | metaclock, with Phi1 changing freely |
 | @ref decoder_rom | `decoder_rom_formal.sv` | combinational, one instant |
-| @ref timing_generator | `timing_generator_formal.sv` | metaclock, with Phi1 and Phi2 changing freely |
-| @ref ready_controller | `ready_controller_formal.sv` | metaclock, with Phi1 and Phi2 changing freely |
-| @ref interrupt_controller | `interrupt_controller_formal.sv` | metaclock, with Phi1 and Phi2 changing freely |
+| @ref timing_generator | `timing_generator_formal.sv` | metaclock, with real Phi1/Phi2 phases of 3 to 7 metaclock cycles |
+| @ref ready_controller | `ready_controller_formal.sv` | metaclock, with real Phi1/Phi2 phases of 3 to 7 metaclock cycles |
+| @ref interrupt_controller | `interrupt_controller_formal.sv` | metaclock, with real Phi1/Phi2 phases of 3 to 7 metaclock cycles |
 | @ref random_logic_controller | `random_logic_controller_formal.sv` | metaclock, with Phi1 and Phi2 changing freely |
 | All eight, wired together | `decoder_formal.sv` | metaclock, with real Phi1/Phi2 phases of 3 to 7 metaclock cycles |
 
-In the unit proofs, Phi1 and Phi2 can change on any metaclock edge, and can
-even be high at once, so they cover timings a real clock generator never
+In the other unit proofs, Phi1 and Phi2 can change on any metaclock edge, and
+can even be high at once, so they cover timings a real clock generator never
 produces. Every latch powers up as documented in its entity.
+
+The timing generator, ready controller and interrupt controller proofs keep no
+model of their entity's latches, so there's no second copy of the VHDL to keep
+in step with it. Each property relates the entity's own outputs at the end of
+a phase to that phase's inputs and to its outputs at the end of the phases
+before, as its documentation describes them ("T3 follows T2 one cycle later
+while ready"), and every latched output must hold while its phase is low.
+That needs real clocks, so these three use `two_phase_clock.sv`: Phi1 and Phi2
+alternate and never overlap (as the @ref phased_clock_generator proof shows
+they do), each phase lasts 3 to 7 metaclock cycles, and the outputs are read
+on each phase's last metaclock edge, once the latch chains have settled.
+Inputs change only as a phase starts. Mutating the VHDL (a T1X that ignores
+`ready`, a write cycle that can stall, a level-triggered NMI, an IRQ that
+ignores I, a reset that never ends, and 9 more) makes each proof fail on the
+property you'd expect.
 
 ### predecode_register and instruction_register
 
@@ -74,25 +89,59 @@ decoder table. On top of that, line 73 (Branch T0) needs `PRDY`, and lines 83,
 
 ### timing_generator
 
-The model describes each counter by its outputs: during Phi2 the counters
-sample their own outputs, and during Phi1 they move on to the next cycle.
-`T1` and `TRES2` are `TRES1` and `TRESX` from Phi1. T2-T5 shift on from T1-T4
-while ready, hold while not ready, and clear on `TRES2`. `T0` and `T1X`,
-`T6` and `T7` follow their documented rules. Cover checks reach T5, T7, `T0`
-together with T2, a stall holding T3, and `TRES2` clearing the counter.
+Cycle by cycle, with every output read at the end of Phi1 and holding
+through Phi2:
+
+- `T1` is `TRES1`, and `TRES2` is `TRESX`, both from Phi1.
+- `T1X` follows `T0` one cycle later, while ready.
+- `T0` is set outside `T1` when the next instruction takes 2 cycles
+  (`TWOCYCLE`) or the current one is finishing (`TRES2`), and stays set until
+  `T1X`.
+- T2-T5 move `T1` on one stage per cycle while ready, hold while not ready,
+  and clear on `TRES2`.
+- `T6` follows a cycle with `SHIFT` and `MemOP` set while ready, and holds
+  while not ready. `T7` follows a cycle of `T6` while ready.
+
+Cover checks reach T5, T7, `T0` together with T2, a stall holding T3,
+`TRES2` clearing the counter, and `T0` held until `T1X`.
 
 ### ready_controller
 
-A model of the documented behavior, phase by phase, plus two properties the
-rest of the CPU relies on, on every step: a cycle that isn't ready never
-writes, and a reset never writes (so the BRK sequence's pushes become reads).
+Phase by phase:
+
+- `WR` is the write latch (`STOR`, `PC/DB`, lines 98 and 100, `T6` or `T7`,
+  from Phi2) while ready, except during a reset.
+- The R/W pin holds `WR`, inverted, from Phi1 for the whole cycle.
+- `ready` is `RDY`, or `WR` from the last Phi1, so a write cycle never
+  stalls, and holds through Phi1.
+- `ReadyPhi1` is `ready` from Phi1, held through Phi2. `PRDY` is `RDY` from
+  Phi2, then Phi1.
+
+On every step, a cycle that isn't ready never writes, and a reset never
+writes (so the BRK sequence's pushes become reads).
 
 ### interrupt_controller
 
-A model of the pad latches, the BRK cycle 6-7 counter, the reset flip-flop,
-the NMI edge detector, the B flag and the vector latches, plus: the vector
-lines only ever select `0xFFFA`, `0xFFFC` or `0xFFFE`, a reset clears
-`B_OUT`, and `BRK6E` only happens while ready.
+Phase by phase. Two of the states the documentation describes aren't
+outputs, so the harness follows them as it defines them: BRK cycle 6 (from
+`0/ADL0`, which marks BRK T5 while ready), and a pending NMI (`DONMI`), from
+an edge on the `/NMI` pin until `BRK6E`, or, for an edge during the vector
+cycles, from the first Phi1 after them.
+
+- `RESP` is `/RES` from Phi2. `RESP` sets `DORES`, which holds until `BRK6E`.
+- BRK T5 while ready starts cycle 6, which holds while not ready. `BRK6E` is
+  cycle 6 while ready, from Phi2 of cycle 6 through Phi1 of cycle 7.
+- In the vector cycles (T5 while ready, then cycle 6), `0/ADL0` is on during
+  T5 and `0/ADL1` during a reset. `0/ADL2` is only on outside a reset, and
+  only starts for a pending NMI. `0/ADL1` and `0/ADL2` are never on at once.
+- A reset clears `B_OUT`. Otherwise it only goes low at T0 or branch T2
+  (line 80), for a pending NMI or for `/IRQ` (from the Phi2 before) while I is
+  clear, and such an IRQ always clears it. It then stays low until `BRK6E`,
+  which sets it again.
+- `BRK6E` only happens while ready.
+
+What the controller does over whole instruction sequences (an NMI taken after
+the vector cycles, bounded latency) is checked in the decoder proof below.
 
 ### random_logic_controller
 
@@ -139,10 +188,38 @@ carry during Phi2, the flags during Phi1, and DB outside Phi1.
   during Phi1, as the 6502 datasheet requires): a write cycle never stalls,
   at most one of T2-T5 is set, and NMI is edge-triggered: once its vector has
   been fetched, another NMI needs `/NMI` to have gone high first.
+- `interrupts` (RDY and `/RES` high after the power-on reset, `/NMI` and
+  `/IRQ` free, with `/NMI` held low until its vector is fetched, as the PPU
+  holds it until it's acknowledged, and no JAM opcode): every documented
+  opcode still takes its documented cycles and writes, including the one an
+  interrupt arrives in, and the injected BRK takes BRK's. An NMI has its vector
+  fetched within 15 cycles of its edge, and an IRQ held low with I clear
+  within 14 cycles. Both bounds are tight (one cycle less fails). The IRQ's
+  worst case arrives during a taken branch, which doesn't check for
+  interrupts in its last cycle, so it waits through the next instruction (up
+  to 8 cycles) and then the BRK sequence. The NMI's arrives too late to take
+  over the vector of a sequence already running, so the CPU first runs one
+  instruction of that handler, as the 6502 does.
+
+In every task, after the power-on reset, the interrupt controller keeps its
+contract with the rest of the CPU. It's stated from the pins, as they stood
+at the end of each Phi2, and the vector lines and `B_OUT` as each cycle
+starts, once their latches have settled:
+
+- Only a pending NMI edge, or `/IRQ` low while I is clear, starts an
+  interrupt sequence (`B_OUT` going low outside a reset). So I masks IRQ, and
+  nothing else starts one.
+- The next opcode fetched after that is BRK, whatever was on the data bus.
+- `B_OUT` stays low from then until the vector is fetched, so P is pushed
+  with B clear.
+- The NMI vector (`0xFFFA`) is only fetched for a pending NMI, and never
+  during a reset. The reset vector (`0xFFFC`) is only fetched after `/RES`
+  was low.
 
 Cover checks reach a page-crossing `LDA abs,X` (5 cycles), a taken branch
 crossing a page (4 cycles), a branch not taken (2 cycles), `INC abs,X` writing twice, a JAM opcode running
-past 8 cycles, a stall at T3, a write while RDY is low, and an NMI.
+past 8 cycles, a stall at T3, a write while RDY is low, an NMI, an IRQ and an
+NMI each fetching their vector, and an opcode fetched while I masks an IRQ.
 
 ### Not verified
 
@@ -150,8 +227,16 @@ past 8 cycles, a stall at T3, a write while RDY is low, and an NMI.
 - Whether a page is really crossed. The ALU carry is free, so the decoder
   proof only checks that a taken branch or an indexed read takes one of its
   two documented counts, not which one a given address needs.
-- Interrupt and stall timing in the decoder proof: the `clean` task assumes
-  neither happens, and the `free` task only checks safety properties.
+- Stall timing, and interrupts during stalls or resets: the `interrupts` task
+  keeps RDY and `/RES` high, and the `free` task only checks safety
+  properties.
+- The exact interrupt latency. The `interrupts` task proves an upper bound,
+  not the documented cycle an interrupt is taken on (such as a taken branch
+  delaying it by an instruction).
+- An `/NMI` pulse that goes high again before its vector is fetched. The
+  `interrupts` task holds `/NMI` low until then.
+- That I is set by the BRK sequence, or that an interrupt pushes the right PC.
+  The flags are free inputs here, and the pushes go through the datapath.
 - What each control command does for each instruction. The decoder proof
   checks dispatch, timing and writes; the CPU testbench checks the commands'
   effect on the datapath.
@@ -160,6 +245,10 @@ past 8 cycles, a stall at T3, a write while RDY is low, and an NMI.
   the phases that sample them, which the real sources do. An input that
   changed on a phase's last edge would split a decision between two latches
   of the same phase (see @ref metaclock).
+- In the timing generator, ready controller and interrupt controller proofs,
+  inputs that change partway through a phase, or overlapping clocks. Each
+  input there changes only as a phase starts. The decoder proof wires the
+  units together, where their inputs come from each other's latches.
 - Inputs other than 0 and 1 (`'X'`, `'U'`, `'Z'`). The proofs run on the
   synthesized netlist, where those don't exist.
 - The properties are checked against the decoder table, the documentation

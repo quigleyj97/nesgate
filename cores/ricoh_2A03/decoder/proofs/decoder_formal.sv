@@ -16,7 +16,7 @@
 // a phase's last edge would split a decision between them, as the real chip
 // never does.
 //
-// Two tasks (the CLEAN parameter):
+// Three tasks (the CLEAN and INTERRUPTS parameters):
 //
 // - clean: after the power-on reset, RDY stays high and no interrupt comes.
 //   Every documented opcode takes its documented number of cycles, counted
@@ -29,8 +29,22 @@
 //   cycle, keeps at most one of T2-T5 set, and NMI is edge-triggered: once
 //   its vector has been fetched, another NMI needs /NMI to have gone high
 //   (during Phi2) first.
+// - interrupts: after the power-on reset, RDY stays high and /RES high, but
+//   /NMI and /IRQ are free, except that /NMI holds low until its vector is
+//   fetched. No JAM opcode is fetched (they never take an interrupt). Every
+//   documented opcode still takes its documented cycles and writes, the
+//   instruction an interrupt arrives in included, and an NMI, or an IRQ
+//   held low with I clear, has its vector fetched within a bounded number
+//   of cycles.
+//
+// In every task, after power-on, the interrupt controller's contract holds:
+// only a pending NMI, or /IRQ low with I clear, starts an interrupt
+// sequence; the next opcode fetched is then BRK; B stays clear until the
+// vector is fetched, so P is pushed with B clear; the NMI vector is only
+// fetched for an NMI, and the reset vector only after /RES was low.
 module decoder_formal #(
-    parameter CLEAN = 1
+    parameter CLEAN = 1,
+    parameter INTERRUPTS = 0
 ) (
     input metaclock,
     input end_phase,
@@ -325,7 +339,9 @@ module decoder_formal #(
     end
 
     always @* begin
-        if (CLEAN && f_running) begin
+        // An interrupt doesn't change how long the instruction it arrives in
+        // takes, so the timing holds in the interrupts task too
+        if ((CLEAN || INTERRUPTS) && f_running) begin
             // The opcode in the IR has just finished, as the next one loads
             if (f_cycle_start && fetch && f_timing != 12'b0) begin
                 check_cycles: assert (f_cycles >= f_fewest && f_cycles <= f_most);
@@ -339,7 +355,8 @@ module decoder_formal #(
                 check_finishes: assert (f_cycles <= 4'd8);
             end
             if (f_fetched) begin
-                check_opcode: assert (ir == f_data);
+                // or BRK, if an interrupt was accepted before this fetch
+                check_opcode: assert (ir == (f_fetched_inject ? 8'h00 : f_data));
             end
         end
     end
@@ -366,6 +383,149 @@ module decoder_formal #(
     end
     // #endregion
 
+    // #region Interrupts
+    // The contract the interrupt controller makes with the rest of the CPU,
+    // stated from the pins rather than from its latches. Checked in every
+    // task after power-on, plus bounded latency in the interrupts task.
+    //
+    // The pins as the pad latches see them: their level on the last
+    // metaclock edge of a Phi2, which is known as the next Phi1 starts.
+    reg f_nmi_n_was = 1'b1;
+    reg f_irq_n_was = 1'b1;
+    reg f_res_n_was = 1'b0;
+    // The pins at the last Phi2 before this cycle
+    reg f_nmi_low = 1'b0;
+    reg f_irq_low_was = 1'b0;
+    wire f_irq_low = f_cycle_start ? !f_irq_n_was : f_irq_low_was;
+    // /NMI was high at one Phi2 and low at the next
+    wire f_nmi_edge = f_cycle_start && !f_nmi_n_was && !f_nmi_low;
+
+    // The vector lines and B_OUT come from latches that are open during a
+    // phase and follow their inputs until it ends, so they're only read as
+    // each cycle starts, once settled: the address registers take ADL during
+    // Phi1, and the data output register takes P during Phi1. These are
+    // their values as the last cycle started.
+    reg f_adl0_cycle = 1'b0;
+    reg f_adl1_cycle = 1'b0;
+    reg f_adl2_cycle = 1'b0;
+    reg f_b_low_cycle = 1'b0;
+    // The vector's low byte is fetched, and which vector it is
+    wire f_vector_fetch = f_cycle_start && adl0 && !f_adl0_cycle;
+    wire f_nmi_vector = f_cycle_start && adl2 && !f_adl2_cycle;
+
+    // An NMI edge that hasn't had its vector fetched yet
+    reg f_nmi_pending_was = 1'b0;
+    wire f_nmi_pending = f_nmi_edge || f_nmi_pending_was;
+    // /RES was low at a Phi2 since the last reset vector fetch started (a
+    // reset held through the fetch restarts the sequence)
+    reg f_reset_seen_was = 1'b0;
+    wire f_reset_seen = (f_cycle_start && !f_res_n_was) || f_reset_seen_was;
+    // The CPU accepts an interrupt: B_OUT goes low outside a reset, where it
+    // wasn't already (an interrupt can follow a reset with B_OUT low
+    // throughout). It decided during the Phi2 that just ended, from the /IRQ
+    // it saw the cycle before (f_irq_low_was, not updated yet) and I (only
+    // changes in Phi1).
+    wire f_b_low_outside_reset = !b_out && !dores;
+    wire f_accepted = f_cycle_start && f_b_low_outside_reset && !f_b_low_cycle;
+    // Accepted, and the next opcode fetch hasn't happened yet
+    reg f_inject = 1'b0;
+    reg f_fetched_inject = 1'b0;
+    // Accepted, and the vector hasn't been fetched yet
+    reg f_in_sequence = 1'b0;
+    // Cycles an NMI has been pending, and an unmasked IRQ held, saturating.
+    // The longest each may wait for its vector, in the interrupts task. Both
+    // are tight (one less fails). The IRQ's worst case arrives during a
+    // taken branch, which doesn't check for interrupts in its last cycle, so
+    // it waits through the next instruction (up to 8 cycles) and then the
+    // BRK sequence. The NMI's arrives too late to take over the vector of a
+    // sequence already running, so the CPU first runs one instruction of
+    // that handler, and its edge detector takes a cycle more.
+    localparam NMI_LATENCY = 5'd15;
+    localparam IRQ_LATENCY = 5'd14;
+    reg [4:0] f_nmi_wait = 5'd0;
+    reg [4:0] f_irq_wait = 5'd0;
+
+    always @(posedge metaclock) begin
+        f_nmi_n_was <= nmi_n;
+        f_irq_n_was <= irq_n;
+        f_res_n_was <= res_n;
+        if (f_cycle_start) begin
+            f_nmi_low <= !f_nmi_n_was;
+            f_irq_low_was <= !f_irq_n_was;
+        end
+        if (f_cycle_start) begin
+            f_adl0_cycle <= adl0;
+            f_adl1_cycle <= adl1;
+            f_adl2_cycle <= adl2;
+            f_b_low_cycle <= f_b_low_outside_reset;
+        end
+
+        f_nmi_pending_was <= f_nmi_edge || (f_nmi_pending_was && !f_nmi_vector);
+        f_reset_seen_was <= (f_reset_seen_was && !(f_vector_fetch && adl1))
+            || (f_cycle_start && !f_res_n_was);
+
+        f_fetched_inject <= f_inject || f_accepted;
+        if (f_cycle_start && fetch) f_inject <= 1'b0;
+        else if (f_accepted) f_inject <= 1'b1;
+        if (f_vector_fetch) f_in_sequence <= 1'b0;
+        else if (f_accepted) f_in_sequence <= 1'b1;
+
+        if (!f_nmi_pending || f_nmi_vector) f_nmi_wait <= 5'd0;
+        else if (f_cycle_start && f_nmi_wait != 5'd31) f_nmi_wait <= f_nmi_wait + 5'd1;
+        // An NMI comes first, so an IRQ only waits while none is pending. It
+        // waits until a vector is fetched, which is its own (none is pending)
+        if (!f_irq_low || i_flag || f_nmi_pending || f_vector_fetch) f_irq_wait <= 5'd0;
+        else if (f_cycle_start && f_irq_wait != 5'd31) f_irq_wait <= f_irq_wait + 5'd1;
+    end
+
+    always @* begin
+        if (INTERRUPTS) begin
+            // A clean power-on reset, then RDY high and /RES high. /NMI holds
+            // low until its vector is fetched, as the PPU's does until it's
+            // acknowledged. The JAM opcodes never take an interrupt.
+            assume_interrupts_ready: assume (rdy);
+            if (!f_powering_on) begin
+                assume_interrupts_reset: assume (res_n);
+            end
+            if (!f_reset_done) begin
+                assume_interrupts_nmi_after_reset: assume (nmi_n);
+            end
+            if (f_nmi_pending_was) begin
+                assume_interrupts_nmi_held: assume (!nmi_n);
+            end
+            assume_interrupts_no_jam: assume (!f_jam);
+        end
+    end
+
+    always @* begin
+        if (!f_powering_on) begin
+            // Only a pending NMI, or /IRQ low with I clear, starts an
+            // interrupt sequence: I masks IRQ
+            if (f_accepted) begin
+                check_accept_cause: assert (f_nmi_pending || (f_irq_low_was && !i_flag));
+            end
+            // B stays clear from then until the vector, so P is pushed with
+            // B clear
+            if (f_in_sequence && f_cycle_start) begin
+                check_b_clear_in_sequence: assert (!b_out);
+            end
+            // The NMI vector only for an NMI, and never during a reset
+            if (f_nmi_vector) begin
+                check_nmi_vector_cause: assert (f_nmi_pending && !adl1);
+            end
+            // The reset vector only after /RES was low
+            if (f_vector_fetch && adl1) begin
+                check_reset_vector_cause: assert (f_reset_seen);
+            end
+            // The injected BRK is checked by check_opcode
+        end
+        if (INTERRUPTS && f_running) begin
+            check_nmi_latency: assert (f_nmi_wait <= NMI_LATENCY);
+            check_irq_latency: assert (f_irq_wait <= IRQ_LATENCY);
+        end
+    end
+    // #endregion
+
     // Each task's covers, since the other's can't happen
     generate
         if (CLEAN) begin : clean_covers
@@ -382,13 +542,23 @@ module decoder_formal #(
                         && f_branch && !f_taken && f_cycles == 4'd2);
                 end
             end
-        end else begin : free_covers
+        end else if (!INTERRUPTS) begin : free_covers
             always @(posedge metaclock) begin
                 if (!f_powering_on) begin
                     reach_stall: cover (phi2 && !ready && t3);
                     reach_nmi: cover (adl2 && !f_adl2_was);
                     reach_write_with_rdy_low: cover (phi2 && !f_phase_start
                         && !r_not_w && !rdy);
+                end
+            end
+        end
+        if (INTERRUPTS) begin : interrupts_covers
+            always @(posedge metaclock) begin
+                if (f_running) begin
+                    reach_irq_taken: cover (f_vector_fetch && !adl2 && f_in_sequence);
+                    reach_nmi_taken: cover (f_nmi_vector && f_in_sequence);
+                    reach_irq_masked: cover (f_cycle_start && fetch && !f_inject
+                        && f_irq_low && i_flag);
                 end
             end
         end
