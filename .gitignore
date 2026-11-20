@@ -3,3 +3,4 @@ typings
 __pycache__
 *.pyc
 docs
+.DS_Store
