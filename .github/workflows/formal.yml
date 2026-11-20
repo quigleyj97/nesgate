@@ -23,6 +23,8 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Run formal verification
       run: ./formal
+      # extend workflow timeout for the FV script as it hammers the CPU
+      timeout-minutes: 30
     - name: Publish Formal Verification Report
       uses: ctrf-io/github-test-reporter@v1
       with:
