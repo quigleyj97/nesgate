@@ -70,7 +70,7 @@ while it's disabled, the same as an undriven, precharged bus.
 | @ref program_counter_low | `program_counter_low_formal.sv` | real Phi1/Phi2 phases of 3-7 metaclock cycles (`two_phase_clock.sv`) |
 | @ref program_counter_high | `program_counter_high_formal.sv` | real Phi1/Phi2 phases of 3-7 metaclock cycles (`two_phase_clock.sv`) |
 | @ref bus_multiplexer | `bus_multiplexer_formal.sv` | combinational, one instant |
-| @ref mos_6502_datapath | `datapath_formal.sv` | `multiclock on`: the metaclock, Phi1 and Phi2, each changing freely |
+| @ref mos_6502_datapath | `datapath_formal.sv` | real Phi1/Phi2 phases of 3-7 metaclock cycles (`two_phase_clock.sv`) |
 
 Every register powers up as 0.
 
@@ -149,24 +149,34 @@ driver wired-AND together.
 
 ### mos_6502_datapath
 
-This proof checks the whole datapath, against a model of every register built
-from the same definitions as the proofs above, and the bus multiplexer's
-wired-AND:
+This proof checks the whole datapath, phase by phase, with real Phi1/Phi2
+clocks. At the end of each phase, it checks every output (the four buses, the
+address pins and the flags) against that phase's inputs and the outputs at
+the end of the phase before, following the registers that aren't outputs as
+their documentation defines them, the same as the proofs above:
 
 - Every register reads the bus it's wired to, and drives the buses it's wired
   to.
-- The address bus registers, PCLS and PCHS only load while Phi1 is high.
+- The address bus registers, PCLS, PCHS, the data output register and the
+  flags only load during Phi1. DL, S and PCL/PCH only load during Phi2.
 - PCL's carry out increments PCH.
-- Every output matches the model on every step: the four buses, the address
-  pins, the data pins and the flags.
+- Each bus reads the wired-AND of every driver on it, inside the datapath or
+  outside it, and SB/DB and SB/ADH join SB with DB and ADH.
+- The address pins and the flags hold through Phi2, and the data pins drive
+  the data output register through Phi2 of a write.
 
-The metaclock, Phi1 and Phi2 are independent inputs here, so the proof covers
-any timing of the three, including ones a real clock generator never produces.
-Registers that aren't outputs are only checked through the buses they drive.
+Every input changes only as a phase starts. The proof assumes what the random
+logic guarantees: A, X, Y and the stack pointer don't load from SB during
+Phi2, PCLS and PCHS never select both sources, and P isn't pushed onto DB
+while DBZ/Z loads Z from it. A cover check reaches A and X on SB together, as
+SBX does.
 
-The proof assumes both clocks start low. Any number of drivers, inside the
-datapath or outside it, can be enabled on a bus at once, and the bus reads
-their wired-AND. A cover check reaches A and X on SB together, as SBX does.
+PDR can't prove Z directly: under DBZ/Z, Z loads from the NOR of all of DB,
+which it can't learn one bit at a time. So `datapath.sby` splits the proof
+into three tasks. `lemma` proves that DB settles within a phase's first two
+edges, from the third edge of Phi1 on (`lemma_db_settled`, one bit at a
+time). `z` assumes that to prove `check_z` and `check_flags_phi2`, and `rest`
+proves every other property. Together they prove every assertion.
 
 ### Not verified
 

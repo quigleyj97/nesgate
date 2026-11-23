@@ -372,6 +372,26 @@ module datapath_formal (
         end
     end
 
+    // #region Settling
+    // DB settles within a phase's first two metaclock edges, as
+    // two_phase_clock.sv's last_edge relies on: from the third edge of Phi1
+    // on, it reads the same on every edge. Z's DBZ/Z source is the NOR of all
+    // eight DB bits, which PDR can't prove stable as a whole word, but can
+    // one bit at a time, here. datapath.sby proves this on its own (the lemma
+    // task) and assumes it to prove check_z and check_flags_phi2 (the z task).
+    reg [7:0] f_db_was = 8'hff;
+    reg f_first_edge_was = 1'b1;
+    always @(posedge metaclock) begin
+        f_db_was <= bus_db;
+        f_first_edge_was <= first_edge;
+    end
+    always @* begin
+        if (f_past_valid && phi1 && !first_edge && !f_first_edge_was) begin
+            lemma_db_settled: assert (bus_db == f_db_was);
+        end
+    end
+    // #endregion
+
     always @* begin
         if (last_edge) begin
             // TAX: A onto SB, into X, then X back out

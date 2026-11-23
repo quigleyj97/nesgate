@@ -1,11 +1,22 @@
+# PDR can't prove check_z and check_flags_phi2 directly: Z's DBZ/Z source is
+# the NOR of all of DB, which it can't learn as clauses over single bits. So
+# the proof is split. The lemma task proves that DB settles (lemma_db_settled,
+# one bit at a time), the z task assumes that to prove the two Z properties,
+# and the rest task proves everything else. Together they cover every
+# assertion, and no task assumes anything another task doesn't prove.
+
 [tasks]
-prove
+lemma prove
+z prove
+rest prove
 cover
 
 [options]
 prove: mode prove
 cover: mode cover
 cover: depth 40
+# Fail instead of hanging, if PDR gets stuck again
+prove: timeout 900
 
 [engines]
 prove: abc pdr
@@ -16,6 +27,10 @@ read_verilog mos_6502_datapath.v
 read_verilog -formal -sv two_phase_clock.sv
 read_verilog -formal -sv datapath_formal.sv
 prep -top datapath_formal
+lemma: chformal -assert -remove c:check_*
+z: chformal -assert2assume c:lemma_db_settled
+z: chformal -assert -remove c:check_* c:check_z %d c:check_flags_phi2 %d
+rest: chformal -assert -remove c:lemma_db_settled c:check_z c:check_flags_phi2
 check -assert
 
 [files]
