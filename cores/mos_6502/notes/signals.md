@@ -1,0 +1,560 @@
+
+# Signals {#MOS_6502_Signals}
+
+The circuitry of the 6502 is controlled by 62 signals from the instruction
+decoder, which enables and disables various parts of the CPU at different phases
+of execution. They are grouped here by the part of the CPU they control, along
+with a few signals that don't come from the decoder.
+
+## Data latch control signals
+
+### `DL/DB` Data Input Latch DB Bus Output Enable {#MOS_6502_Signal_DL_DB}
+### `DL/ADL` Data Input Latch ADL Bus Output Enable {#MOS_6502_Signal_DL_ADL}
+### `DL/ADH` Data Input Latch ADH Bus Output Enable {#MOS_6502_Signal_DL_ADH}
+
+## Address bus register signals
+
+### `ADH/ABH` Load ABH from ADH bus {#MOS_6502_Signal_ADH_ABH}
+### `ADL/ABL` Load ABL from ADL bus {#MOS_6502_Signal_ADL_ABL}
+
+## Bus multiplexer signals
+
+These control the open drain and pass MOSFETs, which @ref bus_multiplexer
+models along with the precharge.
+
+### `SB/DB` Join SB and DB buses {#MOS_6502_Signal_SB_DB}
+
+Turns on the pass MOSFETs between SB and DB, so they act as a single bus.
+Either side can drive it.
+
+### `SB/ADH` Join SB and ADH buses {#MOS_6502_Signal_SB_ADH}
+
+Turns on the pass MOSFETs between SB and ADH, so they act as a single bus.
+Either side can drive it.
+
+### `0/ADL0` Pull ADL bit 0 low {#MOS_6502_Signal_0_ADL0}
+### `0/ADL1` Pull ADL bit 1 low {#MOS_6502_Signal_0_ADL1}
+### `0/ADL2` Pull ADL bit 2 low {#MOS_6502_Signal_0_ADL2}
+
+Together with the precharge, these form the low byte of the interrupt vectors:
+`0xFA` (NMI), `0xFC` (reset) and `0xFE` (IRQ/BRK).
+
+### `0/ADH0` Pull ADH bit 0 low {#MOS_6502_Signal_0_ADH0}
+### `0/ADH(1-7)` Pull ADH bits 1-7 low {#MOS_6502_Signal_0_ADH_1_7}
+
+Together, these address the zero page (`0x00`). `0/ADH(1-7)` alone addresses
+the stack page (`0x01`).
+
+## Program counter signals
+
+These control @ref program_counter_low and @ref program_counter_high (see
+@ref MOS_6502_PC_Registers). The select register loads (`PCL/PCL`, `ADL/PCL`,
+`PCH/PCH`, `ADH/PCH`) are only active during phi1, and
+@ref mos_6502_datapath gates them with phi1. `I/PC` and the bus output enables
+are active in both phases.
+
+### `PCL/PCL` Refresh PCL select register from PCL {#MOS_6502_Signal_PCL_PCL}
+
+Loads PCLS from PCL, so that PCL keeps its value (plus the increment, if
+`I/PC` is asserted) on the next phi2. The random control logic asserts this
+whenever it doesn't assert `ADL/PCL`.
+
+### `ADL/PCL` Load PCL select register from ADL bus {#MOS_6502_Signal_ADL_PCL}
+
+Loads PCLS from the ADL bus, e.g. to jump or to load a vector.
+
+### `I/PC` Increment program counter {#MOS_6502_Signal_I_PC}
+
+Increments the program counter on the next phi2. PCL increments directly, and
+PCH increments on @ref MOS_6502_PCLC. The real chip uses this signal
+active-low, as `#1/PC`.
+
+### `PCL/DB` Enable PCL output to DB bus {#MOS_6502_Signal_PCL_DB}
+### `PCL/ADL` Enable PCL output to ADL bus {#MOS_6502_Signal_PCL_ADL}
+### `PCH/PCH` Refresh PCH select register from PCH {#MOS_6502_Signal_PCH_PCH}
+
+Loads PCHS from PCH, so that PCH keeps its value (plus the carry from PCL) on
+the next phi2. The random control logic asserts this whenever it doesn't assert
+`ADH/PCH`.
+
+### `ADH/PCH` Load PCH select register from ADH bus {#MOS_6502_Signal_ADH_PCH}
+
+Loads PCHS from the ADH bus, e.g. to jump or to load a vector.
+
+### `PCH/DB` Enable PCH output to DB bus {#MOS_6502_Signal_PCH_DB}
+### `PCH/ADH` Enable PCH output to ADH bus {#MOS_6502_Signal_PCH_ADH}
+
+The program counter's increment logic also generates two carries internally,
+which don't come from the decoder:
+
+### `PCLC` Program counter low carry {#MOS_6502_PCLC}
+
+The carry out of the PCL increment logic, which increments PCH. It's set when
+`I/PC` is asserted and PCLS is `0xFF`.
+
+### `PCHC` Program counter high nibble carry {#MOS_6502_PCHC}
+
+PCH's increment logic is split into two nibbles, as in Hanson's block diagram.
+PCHC is the carry from the low nibble into the high nibble, set when PCLC is
+set and the low nibble of PCHS is `0xF`. There's no carry out of the high
+nibble, so the program counter wraps from `0xFFFF` to `0x0000`.
+
+## Stack pointer signals
+
+### `S/ADL` Enable S register output to ADL bus {#MOS_6502_Signal_S_ADL}
+### `SB/S` Load value into S register from SB bus {#MOS_6502_Signal_SB_S}
+### `S/S` Refresh S register value {#MOS_6502_Signal_S_S}
+
+Asserted whenever `SB/S` isn't. The @ref random_logic_controller makes it, but
+the @ref stack_pointer doesn't use it: the real register needs it to refresh
+its input latch from its output latch, to keep its value valid between many CPU
+cycles (since it might be a long time between reads/writes), but that is not
+necessary on FPGA fabric.
+
+`SB/S` loads the input latch during Phi1, and the output latch, which drives
+`S/SB` and `S/ADL`, follows it during Phi2.
+
+### `S/SB` Enable S register output to the SB bus {#MOS_6502_Signal_S_SB}
+
+## ALU Signals
+
+### `NOT(DB)/ADD` ALU B Register Load Inverted {#MOS_6502_Signal_NOT_DB_ADD}
+
+Load the inverse of a word from the DB bus into the B input register of the ALU
+
+### `DB/ADD` ALU B Register Load {#MOS_6502_Signal_DB_ADD}
+
+Load a word from the DB bus into the B input register of the ALU
+
+### `ADL/ADD` ALU B Register Load ADL Bus {#MOS_6502_Signal_ADL_ADD}
+
+Load a word from the ADL bus into the B input register of the ALU
+
+### `I/ADDC` - ALU Carry-in Input {#MOS6502_ALU_IADDC}
+
+Control line for carry-in
+
+### `DAA` - ALU Decimal Mode Enable {#MOS6502_ALU_DAA}
+
+Applies the BCD correction after an addition: ADC while the D flag
+(@ref MOS_6502_Signal_D_OUT) is set. The real chip uses it active-low, as
+`/DAA`.
+
+### `DSA` - ALU Decimal Subtract Adjust {#MOS6502_DSA}
+
+Applies the BCD correction after a subtraction: SBC while the D flag is set.
+The real chip uses it active-low, as `/DSA`. Unlike `DAA`, it doesn't feed the
+adder's carry chain, only the decimal adjust adders after the adder hold
+register, so the @ref mos_6502_alu doesn't take it. Those adders aren't
+implemented yet.
+
+The 2A03 never asserts `DAA` or `DSA`: its masks cut the D flag off from
+them. `decimal_mode => false` on @ref mos_6502 (and
+@ref random_logic_controller) makes the same cut.
+
+### `SUMS` - ALU Summation Enable {#MOS6502_ALU_SUMS}
+### `ANDS` - ALU Logical AND Enable {#MOS6502_ALU_ANDS}
+### `EORS` - ALU Logical XOR Enable {#MOS6502_ALU_EORS}
+
+At least, exclusive is what I'm guessing the "E" in "EOR" expands to.
+
+### `ORS` - ALU Logical OR Enable {#MOS6502_ALU_ORS}
+### `SRS` - ALU Shift Right Enable {#MOS6502_ALU_SRS}
+
+A logical shift right of A AND B: the shifter reuses the AND gates. A shift of
+one operand loads it into one input, and the other reads all ones from an
+undriven, precharged bus. A 0 is shifted into bit 7, and ROR rotates the carry
+in by holding back `ADD/SB(7)`, so SB7 reads the precharge. Left shifts don't
+need a shifter: they add the operand to itself (`SUMS`). The carry out of a
+right shift is loaded straight from DB0 (`DB0/C`), not from `ACR`.
+
+### `ADD/ADL` - Enable Adder Hold Register ADL Bus Output {#MOS6502_ADD_ADL}
+### `ADD/SB(0-6)` - Enable Adder Hold Register SB Bus Outpu, bits 0-6 {#MOS6502_ADD_SB_0_6}
+### `ADD/SB(7)` - Enable Adder Hold Register SB Bus Outpu, bit 7 {#MOS6502_ADD_SB_7}
+### `0/ADD` - Load 0s into the A input register {#MOS6502_0_ADD}
+### `SB/ADD` - Load from the SB bus into the A input register {#MOS6502_SB_ADD}
+
+## Register control signals 
+### `SB/AC` - Load from SB bus into the accumulator {#MOS_6502_Signal_SB_AC}
+
+This is nominally routed through the BCD correction circuity, but this core
+doesn't yet implement that, so the routing is direct.
+
+### `AC/DB` - Enable Accumulator output to DB bus {#MOS_6502_Signal_AC_DB}
+### `AC/SB` - Enable Accumulator output to SB bus {#MOS_6502_Signal_AC_SB}
+### `SB/X` {#MOS_6502_Signal_SB_X}
+### `X/SB` {#MOS_6502_Signal_X_SB}
+### `SB/Y` {#MOS_6502_Signal_SB_Y}
+### `Y/SB` {#MOS_6502_Signal_Y_SB}
+
+## Processor Status Register Signals
+
+### `P/DB` Enable DB bus output for P register {#MOS_6502_Signal_P_DB}
+### `DB0/C` Set C to the value of DB(0) {#MOS_6502_Signal_DB0_C}
+### `IR5/C` Set C to the value of IR5 bit {#MOS_6502_Signal_IR5_C}
+### `ACR/C` Set C to the value of ACR {#MOS_6502_Signal_ACR_C}
+### `DB1/Z` Set Z to the value of DB(1){#MOS_6502_Signal_DB1_Z}
+### `DBZ/Z` Set Z to the value of DBZ {#MOS_6502_Signal_DBZ_Z}
+### `DB2/I` Set I to the value of DB(2) {#MOS_6502_Signal_DB2_I}
+### `IR5/I` Set I to the value of IR5 {#MOS_6502_Signal_IR5_I}
+### `DB3/D` Set D to the value of DB(3) {#MOS_6502_Signal_DB3_D}
+### `IR5/D` Set D to the value of IR5 {#MOS_6502_Signal_IR5_D}
+### `DB6/V` Set V to the value of DB(6) {#MOS_6502_Signal_DB6_V}
+### `AVR/V` Set V to the value of AVR {#MOS_6502_Signal_AVR_V}
+### `1/V` Set V to the value of 1/V {#MOS_6502_Signal_1_V}
+
+Sets V on a falling edge of the external `SO` pin. It doesn't come from the
+random logic.
+
+### `0/V` Clear V {#MOS_6502_Signal_0_V}
+
+Clears V, for CLV (decoder line 127).
+
+### `DB7/N` Set N to the value of DB(7) {#MOS_6502_Signal_DB7_N}
+
+The real chip loads Z, I and D from DB with one signal, `DB/P`, and C, V and N
+with their own (`DB/C`, `DB/V`, `DB/N`). The @ref random_logic_controller
+drives `DB1/Z`, `DB2/I` and `DB3/D` all from `DB/P`.
+
+The P register only loads its flags during Phi1. The load commands above stay
+high through Phi2 as well, while DB precharges, so the @ref status_register
+gates them with `phi1` itself.
+
+The P register also outputs its flags to the random logic. The real chip
+outputs them active-low (`/C_OUT` and so on). This core keeps them active-high.
+
+### `C_OUT` Carry flag {#MOS_6502_Signal_C_OUT}
+
+Used for the ALU carry-in (ADC, SBC, ROL), ROR, and the BCC/BCS branches.
+
+### `D_OUT` Decimal flag {#MOS_6502_Signal_D_OUT}
+
+Turns on the BCD correction (@ref MOS6502_ALU_DAA, @ref MOS6502_DSA).
+
+### `V_OUT` Overflow flag {#MOS_6502_Signal_V_OUT}
+### `N_OUT` Negative flag {#MOS_6502_Signal_N_OUT}
+### `Z_OUT` Zero flag {#MOS_6502_Signal_Z_OUT}
+
+Used by the BVC/BVS, BPL/BMI and BNE/BEQ branches.
+
+## External CPU Signals
+
+### `R/NOT W` Read/write signal {#MOS_6502_Signal_R_NOT_W}
+
+When asserted, the CPU wants to execute a bus read on the next Phi2. Conversely,
+when not asserted, the CPU wants to execute a write on the next Phi2.
+
+The @ref ready_controller latches it from @ref MOS_6502_Signal_WR during
+Phi1, so it holds for the whole cycle.
+
+## Predecode signals
+
+These signals come from or go to the predecode logic, and aren't produced by
+the decoder ROM. See
+@ref MOS6502_Instruction_Decoder.
+
+### `0/IR` Inject BRK into the instruction register {#MOS_6502_Signal_0_IR}
+
+Forces the predecoded opcode to `0x00` (BRK). Interrupts use this to start the
+BRK sequence, since every interrupt mimics BRK with slight changes. It is
+driven by the interrupt and dispatch logic.
+
+### `TWOCYCLE` Two-cycle instruction {#MOS_6502_Signal_TWOCYCLE}
+
+Set when the predecoded opcode always completes in 2 cycles: an immediate
+operand instruction, or a single-byte instruction other than a stack push or
+pull. Used by the short cycle counter in the timing logic. The real chip
+outputs this active-low, as `/TWOCYCLE`.
+
+### `IMPLIED` Single-byte instruction {#MOS_6502_Signal_IMPLIED}
+
+Set when the predecoded opcode matches `XXXX10X0`, a single-byte instruction
+with no operand. Used by the program counter increment logic. The real chip
+outputs this active-low, as `/IMPLIED`.
+
+## Instruction register signals
+
+These signals control the @ref instruction_register, and aren't produced by the
+decoder ROM. See @ref MOS6502_Instruction_Decoder.
+
+### `IR5` Opcode bit 5 {#MOS_6502_Signal_IR5}
+
+Bit 5 of the opcode in the @ref instruction_register. The flag instructions
+(CLC/SEC, CLI/SEI, CLD/SED) load it into their flag, and a conditional branch
+is taken when its flag equals it.
+
+### `FETCH` Load the instruction register {#MOS_6502_Signal_FETCH}
+
+When asserted during @ref MOS_6502_Phi1, loads the opcode from the
+@ref predecode_logic into the @ref instruction_register. It is driven by the
+dispatch logic on the first cycle of each instruction, and the instruction
+register holds its value while it's deasserted.
+
+
+## Timing signals
+
+These signals come from or go to the @ref timing_generator, and aren't produced
+by the decoder ROM. They tell the decoder ROM and the random logic which cycle
+of an instruction the CPU is on. See @ref MOS6502_Instruction_Decoder.
+
+The real chip outputs `/T0`, `/T1X` and `/T2`-`/T5` active-low, and takes
+`/ready` active-low. This core keeps them all active-high. The cycle counters
+hold while @ref MOS_6502_Signal_ready is low.
+
+### `T0` Last cycle of an instruction {#MOS_6502_Signal_T0}
+
+Set on the last cycle of an instruction, which on the 6502 overlaps with
+fetching the next opcode. It is set after @ref MOS_6502_Signal_TRESX, or on
+the second cycle of a @ref MOS_6502_Signal_TWOCYCLE instruction, but never
+during @ref MOS_6502_Signal_T1. It stays set until
+@ref MOS_6502_Signal_T1X follows it.
+
+### `T1` Opcode fetch cycle {#MOS_6502_Signal_T1}
+
+Set on the cycle that fetches an opcode, which is the first cycle of an
+instruction. It is @ref MOS_6502_Signal_TRES1, latched during
+@ref MOS_6502_Phi1. It also drives the external `SYNC` pin, and the dispatch
+logic uses it to make @ref MOS_6502_Signal_FETCH.
+
+### `T1X` Cycle after T0 {#MOS_6502_Signal_T1X}
+
+Set on the cycle after @ref MOS_6502_Signal_T0, which is normally the opcode
+fetch cycle (@ref MOS_6502_Signal_T1) of the next instruction. It ends `T0`.
+The decoder ROM uses `T1X` rather than `T1`.
+
+### `T2` Second cycle {#MOS_6502_Signal_T2}
+### `T3` Third cycle {#MOS_6502_Signal_T3}
+### `T4` Fourth cycle {#MOS_6502_Signal_T4}
+### `T5` Fifth cycle {#MOS_6502_Signal_T5}
+
+The extended cycle counter, a shift register that moves
+@ref MOS_6502_Signal_T1 along one stage per cycle. `T2` follows `T1`, `T3`
+follows `T2`, and so on, until `TRES2` clears them. `TRES2` is
+@ref MOS_6502_Signal_TRESX, latched during @ref MOS_6502_Phi1.
+
+### `T6` First read-modify-write cycle {#MOS_6502_Signal_T6}
+
+Set on the cycle after one with both @ref MOS_6502_Signal_SHIFT and
+@ref MOS_6502_Signal_MemOP set, during a read-modify-write instruction. A
+read-modify-write instruction writes twice, first the unmodified value and then
+the modified one. The R/W logic uses `T6` and @ref MOS_6502_Signal_T7 to
+switch the CPU to writing.
+
+### `T7` Second read-modify-write cycle {#MOS_6502_Signal_T7}
+
+Set on the cycle after @ref MOS_6502_Signal_T6. It also finishes the
+instruction, through @ref MOS_6502_Signal_TRESX.
+
+### `TRES1` Reset the short cycle counter {#MOS_6502_Signal_TRES1}
+
+Starts @ref MOS_6502_Signal_T1 on the next cycle, which begins the next
+instruction. The instruction completion logic in the
+@ref random_logic_controller makes it: at `T0`, at T2 of a branch that isn't
+taken, at T3 of a taken branch that doesn't cross a page, and while `T1` is
+stalled by @ref MOS_6502_Signal_ready.
+
+### `TRESX` Reset the cycle counters {#MOS_6502_Signal_TRESX}
+
+Set when an instruction is finishing. It starts @ref MOS_6502_Signal_T0, and
+clears @ref MOS_6502_Signal_T2 through @ref MOS_6502_Signal_T5 through
+`TRES2`. The instruction completion logic in the @ref random_logic_controller
+makes it: after the memory cycle of an instruction that isn't a
+read-modify-write, after `T7`, on the last addressing cycle of the stack and
+jump instructions, on reset (@ref MOS_6502_Signal_RESP) and on
+@ref MOS_6502_Signal_BRK6E. The real chip outputs it active-low, as `#TRESX`.
+
+### `SHIFT` Shift or rotate instruction {#MOS_6502_Signal_SHIFT}
+
+Set for the shift and rotate instructions, and for INC and DEC (decoder lines
+106 and 107). The real chip outputs it active-low, as `/SHIFT`.
+
+### `MemOP` Memory operand addressing {#MOS_6502_Signal_MemOP}
+
+Set by the decoder lines for the addressing cycles of instructions with a
+memory operand (lines 111 and 122-125). Together with
+@ref MOS_6502_Signal_SHIFT, it starts the read-modify-write cycles. The real
+chip outputs it active-low, as `/MemOP`.
+
+## Decoder ROM signals
+
+These signals come from or go to the @ref decoder_rom. See
+@ref MOS6502_Instruction_Decoder.
+
+### Decoder lines {#MOS_6502_Decoder_Lines}
+
+The 130 outputs of the @ref decoder_rom, numbered 0-129 as in the decoder table.
+Each line is set when the opcode in the @ref instruction_register matches its
+mask, during its cycle (or any cycle, for lines marked `TX`). The random logic
+combines them into the control signals on this page. The comments on
+`decoder_masks` in the @ref decoder_rom list what each line matches.
+
+A few lines have extra logic in the decoder area. Line 129 matches the stack
+push/pull instructions, and only removes them from lines 83, 90 and 128. Line 73
+(Branch T0, called `BR0` outside the decoder) is gated by
+@ref MOS_6502_Signal_PRDY. Line 128 (IMPL) also checks that `IR0` is 0.
+
+The real chip outputs the lines active-low. This core keeps them active-high.
+
+## Ready control signals
+
+These signals come from or go to the @ref ready_controller. See
+@ref MOS6502_Instruction_Decoder.
+
+### `RDY` Ready pin {#MOS_6502_Signal_RDY}
+
+The external `RDY` pin. Pulling it low stalls the CPU on its next read cycle,
+e.g. while another device uses the bus for DMA. The CPU can't stall on a write
+cycle, so a write finishes first.
+
+### `ready` CPU ready {#MOS_6502_Signal_ready}
+
+Low while the CPU is stalled by @ref MOS_6502_Signal_RDY. It is latched
+during @ref MOS_6502_Phi2, so a stall holds from Phi2 through the next Phi1.
+While it's low, the timing logic holds its current cycle, and the stalled cycle
+repeats the one before it. The @ref ready_controller keeps it high during write
+cycles (@ref MOS_6502_Signal_WR from the last Phi1), since the 6502 can only
+stall on reads. The real chip calls it `/ready`, active-low.
+
+### `ReadyPhi1` Ready during Phi1 {#MOS_6502_Signal_ReadyPhi1}
+
+@ref MOS_6502_Signal_ready latched during @ref MOS_6502_Phi1, and held
+through Phi2 while `ready` itself changes. The ACR latch and the branch logic use
+it. The real chip outputs it active-low, as `NotReadyPhi1`.
+
+### `PRDY` Previous ready {#MOS_6502_Signal_PRDY}
+
+@ref MOS_6502_Signal_RDY latched during @ref MOS_6502_Phi2 and then
+@ref MOS_6502_Phi1, so it says whether `RDY` was high on the previous cycle.
+It gates decoder line 73 (Branch T0): if the CPU wasn't ready when the previous
+instruction finished, the T0 cycle of a conditional branch is skipped. On the
+real chip these latches sit next to the `RDY` pad, and output it active-low, as
+`/PRDY`.
+
+### `WR` Write cycle {#MOS_6502_Signal_WR}
+
+Set when the CPU writes to memory on this cycle. The R/W pin latches it during
+@ref MOS_6502_Phi1, as @ref MOS_6502_Signal_R_NOT_W. It is set from Phi2 of a
+cycle with any of the write sources, and holds through the next Phi1. The
+sources are @ref MOS_6502_Signal_STOR, @ref MOS_6502_Signal_PC_DB, decoder
+line 98 (BRK T4), decoder line 100 (push T2), @ref MOS_6502_Signal_T6 and
+@ref MOS_6502_Signal_T7. It is never set while the CPU isn't
+@ref MOS_6502_Signal_ready, or during reset (@ref MOS_6502_Signal_DORES).
+
+### `STOR` Store cycle {#MOS_6502_Signal_STOR}
+
+Set on the memory cycle of a store instruction: decoder line 97 (STORE)
+together with @ref MOS_6502_Signal_MemOP. It makes a write cycle, and the
+random logic also uses it to put the register being stored on the data bus.
+
+### `PC/DB` PC to data bus {#MOS_6502_Signal_PC_DB}
+
+Set while either half of the program counter drives the DB bus
+(@ref MOS_6502_Signal_PCL_DB or @ref MOS_6502_Signal_PCH_DB), which happens
+when JSR, BRK or an interrupt pushes the PC onto the stack. It makes a write
+cycle.
+
+## Interrupt control signals
+
+These signals come from or go to the @ref interrupt_controller. See
+@ref MOS6502_Instruction_Decoder.
+
+### `/NMI` Non-maskable interrupt pin {#MOS_6502_Signal_NMI}
+
+The external, active-low `/NMI` pin. A falling edge requests an NMI, even while
+the I flag is set. The pad latches it during @ref MOS_6502_Phi2, as `NMIP`.
+Holding it low only requests one NMI: it must go high again before the next
+falling edge.
+
+### `/IRQ` Interrupt request pin {#MOS_6502_Signal_IRQ}
+
+The external, active-low `/IRQ` pin. While it is low, and the I flag
+(@ref MOS_6502_Signal_I_OUT) is clear, the CPU takes an IRQ at the end of the
+current instruction. The pad latches it during @ref MOS_6502_Phi2 and then
+@ref MOS_6502_Phi1, as `IRQP`, so it must be low a cycle before T0.
+
+### `/RES` Reset pin {#MOS_6502_Signal_RES}
+
+The external, active-low `/RES` pin. While it is low, the CPU resets. The pad
+latches it during @ref MOS_6502_Phi2 and then @ref MOS_6502_Phi1, as
+@ref MOS_6502_Signal_RESP.
+
+### `RESP` Reset pending {#MOS_6502_Signal_RESP}
+
+The @ref MOS_6502_Signal_RES pin is low, from the pad latches. It sets
+@ref MOS_6502_Signal_DORES, and the dispatch logic uses it to restart the
+instruction sequence.
+
+### `DORES` Reset in progress {#MOS_6502_Signal_DORES}
+
+Set by the interrupt logic while the CPU is handling a reset. It is latched from
+@ref MOS_6502_Signal_RESP during @ref MOS_6502_Phi2, and holds until
+@ref MOS_6502_Signal_BRK6E. A reset runs the same sequence as BRK, but with
+every write turned into a read, so @ref MOS_6502_Signal_WR stays low. It also
+clears @ref MOS_6502_Signal_B_OUT, and selects the reset vector (`0xFFFC`).
+
+### `BRK6E` BRK cycle 6 end {#MOS_6502_Signal_BRK6E}
+
+Set from @ref MOS_6502_Phi2 of the last cycle of the BRK sequence, which
+fetches the high byte of the vector, through Phi1 of the next cycle, while the
+CPU is @ref MOS_6502_Signal_ready. The decoder doesn't count this cycle: the
+interrupt logic starts it after decoder line 22 (BRK T5). It ends the sequence:
+it clears @ref MOS_6502_Signal_DORES, the pending NMI and the interrupt state
+in @ref MOS_6502_Signal_B_OUT, sets the I flag, and resets the timing logic.
+
+### `B_OUT` B flag {#MOS_6502_Signal_B_OUT}
+
+Clear while the CPU is handling a hardware interrupt or a reset, and set
+otherwise. Interrupts are checked during @ref MOS_6502_Signal_T0, or T2 of a
+branch (decoder line 80, `BR2`): a pending NMI, or `IRQP` while the I flag is
+clear, clears it until @ref MOS_6502_Signal_BRK6E. While it's clear, the next
+opcode fetch is replaced with BRK (@ref MOS_6502_Signal_0_IR), the PC isn't
+incremented, and P is pushed with B (bit 4) clear. A BRK instruction leaves it
+set, so the handler can tell them apart.
+
+### `I_OUT` Interrupt disable flag {#MOS_6502_Signal_I_OUT}
+
+The I flag of the @ref MOS_6502_P_Register, which masks
+@ref MOS_6502_Signal_IRQ. It reads as set during
+@ref MOS_6502_Signal_BRK6E, so the handler starts with IRQs masked. The real
+chip outputs it active-low, as `/I_OUT`.
+
+## Random logic signals
+
+These are intermediate signals inside the @ref random_logic_controller, which
+don't leave it. See @ref MOS6502_Instruction_Decoder. The real chip has many
+more; these are the ones the documentation refers to.
+
+### `BR0`, `BR2`, `BR3` Branch cycles {#MOS_6502_Signal_BR}
+
+Decoder lines 73, 80 and 93: T0, T2 and T3 of a conditional branch. `BR0` is
+gated by @ref MOS_6502_Signal_PRDY.
+
+### `BRTAKEN` Branch taken {#MOS_6502_Signal_BRTAKEN}
+
+Set when the flag that IR6 and IR7 select (N, V, C or Z) equals
+@ref MOS_6502_Signal_IR5. It is worked out every cycle, but only used during
+`BR2`. The real chip outputs it active-low, as `/BRTAKEN`.
+
+### `BRFW` Branch forward {#MOS_6502_Signal_BRFW}
+
+Set when bit 7 of the branch offset, on DB during Phi1 after `BR2`, is clear.
+It holds until the next branch. At `BR3` it picks whether the ALU adds 1 to
+or subtracts 1 from PCH when the branch crosses a page.
+
+### `BRA` Branch without page crossing {#MOS_6502_Signal_BRA}
+
+Set at `BR3` when the branch doesn't cross a page: forward without a carry out
+of PCL, or backward with one. It ends the branch, and increments PC.
+
+### `ACRL1`, `ACRL2` ACR latch {#MOS_6502_Signal_ACRL}
+
+The ALU carry (@ref MOS6502_ALU_ACR), held while the CPU isn't
+@ref MOS_6502_Signal_ready. `ACRL2` is `ACRL1` a half-cycle later. A carry
+during indexed addressing adds the page-crossing cycle (`ACRL1`), and loads
+ABH again with the fixed-up high byte (`ACRL2`).
+
+### `ENDS`, `ENDX` End short or long instructions {#MOS_6502_Signal_ENDS}
+
+`ENDS` ends an instruction at `T0`, or at `BR2` of a branch that isn't taken,
+through @ref MOS_6502_Signal_TRES1. `ENDX` ends the longer ones through
+@ref MOS_6502_Signal_TRESX. The real chip's `ENDX` net is active-low.

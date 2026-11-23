@@ -1,0 +1,41 @@
+#!/bin/bash
+
+set -x
+set -e
+
+pushd $1
+
+# ALU tests
+python -m util.run_cocotb mos_6502_alu cores.mos_6502.alu.verify_alu ./cores/mos_6502/alu/alu.vhdl
+python -m util.run_cocotb adder_hold_register cores.mos_6502.alu.verify_add ./cores/mos_6502/alu/adder_hold_register.vhdl
+python -m util.run_cocotb a_input_register cores.mos_6502.alu.verify_a_input_register ./cores/mos_6502/alu/a_input_register.vhdl
+python -m util.run_cocotb b_input_register cores.mos_6502.alu.verify_b_input_register ./cores/mos_6502/alu/b_input_register.vhdl
+
+# Datapath tests
+python -m util.run_cocotb index_register cores.mos_6502.datapath.verify_index_register ./cores/mos_6502/datapath/index_register.vhdl
+python -m util.run_cocotb accumulator cores.mos_6502.datapath.verify_accumulator ./cores/mos_6502/datapath/accumulator.vhdl
+python -m util.run_cocotb data_input_latch cores.mos_6502.datapath.verify_data_input_latch ./cores/mos_6502/datapath/data_input_latch.vhdl
+python -m util.run_cocotb data_output_latch cores.mos_6502.datapath.verify_data_output_latch ./cores/mos_6502/datapath/data_output_latch.vhdl
+python -m util.run_cocotb status_register cores.mos_6502.datapath.verify_status_register ./cores/mos_6502/datapath/status_register.vhdl
+python -m util.run_cocotb stack_pointer cores.mos_6502.datapath.verify_stack_pointer ./cores/mos_6502/datapath/stack_pointer.vhdl
+python -m util.run_cocotb program_counter_low cores.mos_6502.datapath.verify_program_counter_low ./cores/mos_6502/datapath/program_counter_low.vhdl
+python -m util.run_cocotb program_counter_high cores.mos_6502.datapath.verify_program_counter_high ./cores/mos_6502/datapath/program_counter_high.vhdl
+python -m util.run_cocotb bus_multiplexer cores.mos_6502.datapath.verify_bus_multiplexer ./cores/mos_6502/datapath/bus_multiplexer.vhdl
+python -m util.run_cocotb mos_6502_datapath cores.mos_6502.datapath.verify_datapath ./cores/mos_6502/datapath/index_register.vhdl ./cores/mos_6502/datapath/accumulator.vhdl ./cores/mos_6502/datapath/data_input_latch.vhdl ./cores/mos_6502/datapath/data_output_latch.vhdl ./cores/mos_6502/datapath/status_register.vhdl ./cores/mos_6502/datapath/stack_pointer.vhdl ./cores/mos_6502/datapath/bus_multiplexer.vhdl ./cores/mos_6502/datapath/program_counter_low.vhdl ./cores/mos_6502/datapath/program_counter_high.vhdl ./cores/mos_6502/datapath/mos_6502_datapath.vhdl
+
+# Decoder tests
+python -m util.run_cocotb predecode_register cores.mos_6502.decoder.verify_predecode_register ./cores/mos_6502/decoder/predecode_register.vhdl
+python -m util.run_cocotb predecode_logic cores.mos_6502.decoder.verify_predecode_logic ./cores/mos_6502/decoder/predecode_logic.vhdl
+python -m util.run_cocotb instruction_register cores.mos_6502.decoder.verify_instruction_register ./cores/mos_6502/decoder/instruction_register.vhdl
+python -m util.run_cocotb timing_generator cores.mos_6502.decoder.verify_timing_generator ./cores/mos_6502/decoder/timing_generator.vhdl
+python -m util.run_cocotb decoder_rom cores.mos_6502.decoder.verify_decoder_rom ./cores/mos_6502/decoder/decoder_rom.vhdl
+python -m util.run_cocotb ready_controller cores.mos_6502.decoder.verify_ready_controller ./cores/mos_6502/decoder/ready_controller.vhdl
+python -m util.run_cocotb interrupt_controller cores.mos_6502.decoder.verify_interrupt_controller ./cores/mos_6502/decoder/interrupt_controller.vhdl
+python -m util.run_cocotb random_logic_controller cores.mos_6502.decoder.verify_random_logic_controller ./cores/mos_6502/decoder/random_logic_controller.vhdl
+# The 2A03, with its decimal mode cut out
+python -m util.run_cocotb random_logic_controller cores.mos_6502.decoder.verify_random_logic_controller -gdecimal_mode=false ./cores/mos_6502/decoder/random_logic_controller.vhdl
+
+# CPU tests, running programs end to end
+python -m util.run_cocotb mos_6502 cores.mos_6502.verify_mos_6502 ./cores/mos_6502/alu/alu.vhdl ./cores/mos_6502/alu/adder_hold_register.vhdl ./cores/mos_6502/alu/a_input_register.vhdl ./cores/mos_6502/alu/b_input_register.vhdl ./cores/mos_6502/alu/logic_core.vhdl ./cores/mos_6502/datapath/index_register.vhdl ./cores/mos_6502/datapath/accumulator.vhdl ./cores/mos_6502/datapath/data_input_latch.vhdl ./cores/mos_6502/datapath/data_output_latch.vhdl ./cores/mos_6502/datapath/status_register.vhdl ./cores/mos_6502/datapath/stack_pointer.vhdl ./cores/mos_6502/datapath/bus_multiplexer.vhdl ./cores/mos_6502/datapath/program_counter_low.vhdl ./cores/mos_6502/datapath/program_counter_high.vhdl ./cores/mos_6502/datapath/mos_6502_datapath.vhdl ./cores/mos_6502/decoder/predecode_register.vhdl ./cores/mos_6502/decoder/predecode_logic.vhdl ./cores/mos_6502/decoder/instruction_register.vhdl ./cores/mos_6502/decoder/timing_generator.vhdl ./cores/mos_6502/decoder/decoder_rom.vhdl ./cores/mos_6502/decoder/ready_controller.vhdl ./cores/mos_6502/decoder/interrupt_controller.vhdl ./cores/mos_6502/decoder/random_logic_controller.vhdl ./cores/mos_6502/core.vhdl
+
+popd

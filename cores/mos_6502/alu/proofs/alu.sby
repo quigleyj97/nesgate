@@ -1,0 +1,21 @@
+[tasks]
+prove
+cover
+
+[options]
+depth 1
+prove: mode prove
+cover: mode cover
+
+[engines]
+smtbmc z3
+
+[script]
+read_verilog mos_6502_alu.v
+read_verilog -formal -sv alu_formal.sv
+prep -top alu_formal
+check -assert
+
+[files]
+formal/mos_6502_alu.v
+../cores/mos_6502/alu/proofs/alu_formal.sv

@@ -31,6 +31,9 @@ end entity;
 
 architecture rtl of toplevel is
     component mos_6502 is
+        generic(
+            decimal_mode: boolean := true
+        );
         port (
             metaclock: in std_ulogic;
             phi1: in std_ulogic;
@@ -138,7 +141,11 @@ begin
     -- FIRE1 is active-high
     n_reset <= power_on_done and not btn(1);
 
+    -- The NES's 2A03 has its decimal mode cut out
     cpu: mos_6502
+        generic map(
+            decimal_mode => false
+        )
         port map(
             metaclock => clk_25mhz,
             phi1 => phi1,

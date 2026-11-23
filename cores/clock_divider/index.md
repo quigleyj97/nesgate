@@ -29,7 +29,7 @@ for each:
 |---|---|
 | 1 | The smallest divisor: the counter has a single value, and the output toggles on every edge |
 | 2 | The default |
-| 3 | The fewest metaclocks per phase the CPU allows (see @ref Ricoh_2A03_clocks) |
+| 3 | The fewest metaclocks per phase the CPU allows (see @ref MOS_6502_clocks) |
 | 7 | The top level's `METACLOCKS_PER_PHASE` |
 | 8 | A power of two, where the counter uses every value of its bits |
 

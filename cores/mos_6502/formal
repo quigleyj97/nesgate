@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Formally verify this core's entities. Run by `formal` after every core has
+# been imported. $1 is the build directory.
+
+set -e
+
+# <entity>:<sby file>, with the .sby path relative to the build directory.
+# formal_check starts the tasks in this order, several at a time, so the
+# slowest proofs (the decoder, the datapath and the logic core) come first.
+PROOFS=(
+    predecode_register+predecode_logic+instruction_register+timing_generator+decoder_rom+ready_controller+interrupt_controller+random_logic_controller:../cores/mos_6502/decoder/proofs/decoder.sby
+    mos_6502_datapath:../cores/mos_6502/datapath/proofs/datapath.sby
+    logic_core:../cores/mos_6502/alu/proofs/logic_core.sby
+    mos_6502_alu:../cores/mos_6502/alu/proofs/alu.sby
+    a_input_register:../cores/mos_6502/alu/proofs/a_input_register.sby
+    b_input_register:../cores/mos_6502/alu/proofs/b_input_register.sby
+    adder_hold_register:../cores/mos_6502/alu/proofs/adder_hold_register.sby
+    index_register:../cores/mos_6502/datapath/proofs/index_register.sby
+    accumulator:../cores/mos_6502/datapath/proofs/accumulator.sby
+    data_input_latch:../cores/mos_6502/datapath/proofs/data_input_latch.sby
+    data_output_latch:../cores/mos_6502/datapath/proofs/data_output_latch.sby
+    stack_pointer:../cores/mos_6502/datapath/proofs/stack_pointer.sby
+    status_register:../cores/mos_6502/datapath/proofs/status_register.sby
+    program_counter_low:../cores/mos_6502/datapath/proofs/program_counter_low.sby
+    program_counter_high:../cores/mos_6502/datapath/proofs/program_counter_high.sby
+    bus_multiplexer:../cores/mos_6502/datapath/proofs/bus_multiplexer.sby
+    predecode_register:../cores/mos_6502/decoder/proofs/predecode_register.sby
+    predecode_logic:../cores/mos_6502/decoder/proofs/predecode_logic.sby
+    instruction_register:../cores/mos_6502/decoder/proofs/instruction_register.sby
+    decoder_rom:../cores/mos_6502/decoder/proofs/decoder_rom.sby
+    timing_generator:../cores/mos_6502/decoder/proofs/timing_generator.sby
+    ready_controller:../cores/mos_6502/decoder/proofs/ready_controller.sby
+    interrupt_controller:../cores/mos_6502/decoder/proofs/interrupt_controller.sby
+    random_logic_controller:../cores/mos_6502/decoder/proofs/random_logic_controller.sby
+)
+
+"$(dirname "$0")/../../util/formal_check" "$1" "${PROOFS[@]}"

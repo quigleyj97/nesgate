@@ -15,21 +15,33 @@ stub_dir = root_path / "typings"
 # dependency, is installed. Set COPRA=0 to opt out.
 write_stubs = find_spec("copra") is not None and os.getenv("COPRA") != "0"
 
-def run_cocotb_test(toplevel_name: str, test_name: str, sources: list[str]):
+def run_cocotb_test(
+    toplevel_name: str,
+    test_name: str,
+    sources: list[str],
+    generics: dict[str, str] | None = None,
+):
+    """Build and test toplevel_name. Each of generics overrides a generic of
+    the toplevel, and a variant with generics builds into its own directory,
+    build/<toplevel>-<generic>_<value>[-...]. The testbench can read each one
+    from the GENERIC_<name> environment variable."""
+    generics = generics or {}
+    build_name = "-".join([toplevel_name, *(f"{name}_{value}" for name, value in generics.items())])
     runner = get_runner(sim)
     runner.build(
         sources=sources,
         hdl_toplevel=toplevel_name,
-        build_dir=root_path / "build" / toplevel_name
+        build_dir=root_path / "build" / build_name,
+        parameters=generics,
     )
 
     # Copra's autostub module runs first and writes typings/<toplevel>.pyi.
     test_modules = [test_name]
-    extra_env = {}
+    extra_env = {f"GENERIC_{name}": value for name, value in generics.items()}
     stub = stub_dir / f"{toplevel_name}.pyi"
     if write_stubs:
         test_modules.insert(0, "copra.integration.autostub")
-        extra_env = {"COPRA_STUB_DIR": str(stub_dir), "COPRA_STUB_FILENAME": stub.name}
+        extra_env |= {"COPRA_STUB_DIR": str(stub_dir), "COPRA_STUB_FILENAME": stub.name}
 
     results_xml = runner.test(
         hdl_toplevel=toplevel_name,
@@ -58,6 +70,9 @@ def mk_plusargs(test_name: str) -> list[str]:
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Usage: python run_cocotb.py <toplevel_name> <test_name> <source_files...>")
+        print("Usage: python run_cocotb.py <toplevel_name> <test_name> [-g<generic>=<value>...] <source_files...>")
         sys.exit(1)
-    run_cocotb_test(sys.argv[1], sys.argv[2], sys.argv[3:])
+    args = sys.argv[3:]
+    generics = dict(arg[2:].split("=", 1) for arg in args if arg.startswith("-g"))
+    sources = [arg for arg in args if not arg.startswith("-g")]
+    run_cocotb_test(sys.argv[1], sys.argv[2], sources, generics)

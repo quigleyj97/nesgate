@@ -5,5 +5,5 @@ logic of this project.
 
 - @ref blinky
 - @subpage ClockDivider
-- @subpage Ricoh2A03
+- @subpage MOS6502
 - @subpage PhasedClockGen

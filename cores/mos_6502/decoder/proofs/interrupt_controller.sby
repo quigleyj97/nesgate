@@ -1,0 +1,24 @@
+[tasks]
+prove
+cover
+
+[options]
+prove: mode prove
+cover: mode cover
+cover: depth 60
+
+[engines]
+prove: abc pdr
+cover: smtbmc z3
+
+[script]
+read_verilog interrupt_controller.v
+read_verilog -formal -sv two_phase_clock.sv
+read_verilog -formal -sv interrupt_controller_formal.sv
+prep -top interrupt_controller_formal
+check -assert
+
+[files]
+formal/interrupt_controller.v
+../cores/mos_6502/decoder/proofs/two_phase_clock.sv
+../cores/mos_6502/decoder/proofs/interrupt_controller_formal.sv
