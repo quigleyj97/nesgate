@@ -7,3 +7,4 @@ logic of this project.
 - @subpage ClockDivider
 - @subpage MOS6502
 - @subpage PhasedClockGen
+- @subpage Ricoh2A03

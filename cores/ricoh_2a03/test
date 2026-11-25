@@ -1,0 +1,36 @@
+#!/bin/bash
+
+set -x
+set -e
+
+# The 6502 sources the 2A03 is built from, in the order they're analyzed
+MOS_6502=(
+    ./cores/mos_6502/alu/alu.vhdl
+    ./cores/mos_6502/alu/adder_hold_register.vhdl
+    ./cores/mos_6502/alu/a_input_register.vhdl
+    ./cores/mos_6502/alu/b_input_register.vhdl
+    ./cores/mos_6502/alu/logic_core.vhdl
+    ./cores/mos_6502/datapath/index_register.vhdl
+    ./cores/mos_6502/datapath/accumulator.vhdl
+    ./cores/mos_6502/datapath/data_input_latch.vhdl
+    ./cores/mos_6502/datapath/data_output_latch.vhdl
+    ./cores/mos_6502/datapath/status_register.vhdl
+    ./cores/mos_6502/datapath/stack_pointer.vhdl
+    ./cores/mos_6502/datapath/bus_multiplexer.vhdl
+    ./cores/mos_6502/datapath/program_counter_low.vhdl
+    ./cores/mos_6502/datapath/program_counter_high.vhdl
+    ./cores/mos_6502/datapath/mos_6502_datapath.vhdl
+    ./cores/mos_6502/decoder/predecode_register.vhdl
+    ./cores/mos_6502/decoder/predecode_logic.vhdl
+    ./cores/mos_6502/decoder/instruction_register.vhdl
+    ./cores/mos_6502/decoder/timing_generator.vhdl
+    ./cores/mos_6502/decoder/decoder_rom.vhdl
+    ./cores/mos_6502/decoder/ready_controller.vhdl
+    ./cores/mos_6502/decoder/interrupt_controller.vhdl
+    ./cores/mos_6502/decoder/random_logic_controller.vhdl
+    ./cores/mos_6502/core.vhdl
+)
+
+pushd $1
+python -m util.run_cocotb ricoh_2a03 cores.ricoh_2a03.verify_ricoh_2a03 "${MOS_6502[@]}" ./cores/ricoh_2a03/ricoh_2a03.vhdl
+popd

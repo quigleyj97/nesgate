@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -x
+set -e
+
+# The 2A03 is built from the 6502 core, so import that first
+"$(dirname "$0")/../mos_6502/analyze" $1
+
+FILES="../cores/ricoh_2a03/ricoh_2a03.vhdl"
+
+pushd $1
+eval "$GHDL -i $FILES"
+popd
