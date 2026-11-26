@@ -7,8 +7,11 @@ the build and one per property; engines that don't report per-property results
 (e.g. abc pdr) give a single testcase for the whole task instead. A property
 the task's mode doesn't check (asserts in a cover task, covers in a prove task)
 is listed as skipped; those entries are left out of the merged report, since
-they aren't results. `formal_check` writes the same kind of report for an
-entity that fails to synthesize, since SymbiYosys never runs then.
+they aren't results. `formal_check` writes the same kind of report, with an
+error, for an entity that fails to synthesize or a .sby file with no tasks
+(SymbiYosys never runs then), and for a task where SymbiYosys exits without
+writing one (e.g. it crashes). Only these reports are read, so a task with
+none would be missing from the merged report, not counted as failed.
 
 Standard library only: the formal CI job runs this without pipenv.
 

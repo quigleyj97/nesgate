@@ -31,7 +31,8 @@
 # library. Then every task of every .sby file runs as its own SymbiYosys job,
 # FORMAL_JOBS at a time (by default, one per CPU), in the order the proofs are
 # listed, so list the slowest first. Each task's log goes to
-# formal/<sby name>_<task>/logfile.txt, and a failed task's log is printed.
+# formal/<sby name>_<task>/logfile.txt, and a failed task's log is printed,
+# along with anything SymbiYosys wrote to stderr (e.g. a Python traceback).
 #
 # Usage: formal_check <build dir> <entity>[+<entity>...]:<sby file>[:<variant>...]...
 
@@ -43,18 +44,20 @@ shift
 failed=()
 JOBS=${FORMAL_JOBS:-$(getconf _NPROCESSORS_ONLN)}
 
-# SymbiYosys writes a JUnit report for every task, but never runs if the entity
-# doesn't synthesize. Write one in the same shape so util/merge_formal_results
-# reports the failure too.
-write_synth_failure() {
-    local name=$1 entity=$2
-    mkdir -p "formal/${name}_synth"
-    cat > "formal/${name}_synth/${name}_synth.xml" <<EOF
+# SymbiYosys writes a JUnit report to formal/<name>_<task>/<name>_<task>.xml
+# for every task it finishes. When it has nothing to run (the entity doesn't
+# synthesize, or the .sby file has no tasks) or dies before writing the report,
+# write one in the same shape, so util/merge_formal_results reports the failure
+# too. The message is an XML attribute, so it mustn't contain '"', '<' or '&'.
+write_error_report() {
+    local name=$1 task=$2 testcase=$3 message=$4
+    mkdir -p "formal/${name}_$task"
+    cat > "formal/${name}_$task/${name}_$task.xml" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuites>
-<testsuite package="$name" name="synth" tests="1" errors="1" failures="0" skipped="0" time="0">
-<testcase classname="synth" name="synthesize $entity" time="0">
-<error type="ERROR" message="GHDL failed to synthesize $entity"/>
+<testsuite package="$name" name="$task" tests="1" errors="1" failures="0" skipped="0" time="0">
+<testcase classname="$task" name="$testcase" time="0">
+<error type="ERROR" message="$message"/>
 </testcase>
 </testsuite>
 </testsuites>
@@ -115,12 +118,14 @@ for proof in "$@"; do
     fi
     if ! $synthesized; then
         failed+=("$sby_file (synthesizing $failed_entity)")
-        write_synth_failure "$name" "$failed_entity"
+        write_error_report "$name" synth "synthesize $failed_entity" \
+            "GHDL failed to synthesize $failed_entity"
         continue
     fi
     tasks=$(sby --dumptasks "$sby_file")
     if [ -z "$tasks" ]; then
         failed+=("$sby_file (no tasks)")
+        write_error_report "$name" tasks "list tasks" "$sby_file has no tasks"
         continue
     fi
     for task in $tasks; do
@@ -128,19 +133,35 @@ for proof in "$@"; do
     done
 done
 
-# Run one SymbiYosys task, and record it if it fails
+# Run one SymbiYosys task, and record it if it fails.
+#
+# Each task gets its own workdir with -d, not a shared --prefix. With
+# --prefix, every task of a .sby file shares one status database, in
+# formal/<sby name>/status.sqlite, and with -f each sby run resets it as it
+# starts, under the tasks of that file that are still running. Those then die
+# with a sqlite3 error or FileNotFoundError, and never write a report. With -d,
+# the database lives in the task's own workdir. The workdir and report names
+# are the same either way.
 run_task() {
     local sby_file=$1 name=$2 task=$3
-    local start=$(date +%s)
-    if sby -f --prefix "formal/$name" "$sby_file" "$task" > /dev/null 2>&1; then
+    local workdir="formal/${name}_$task"
+    local start=$(date +%s) stderr=$(mktemp)
+    # stdout repeats logfile.txt, but stderr has any Python traceback
+    if sby -f -d "$workdir" "$sby_file" "$task" > /dev/null 2> "$stderr"; then
         echo "PASS ${name}_$task ($(( $(date +%s) - start ))s)"
     else
         echo "FAIL ${name}_$task ($(( $(date +%s) - start ))s)"
-        tail -n 40 "formal/${name}_$task/logfile.txt" 2>/dev/null
+        tail -n 40 "$workdir/logfile.txt" 2>/dev/null
+        cat "$stderr"
+        if [ ! -f "$workdir/${name}_$task.xml" ]; then
+            write_error_report "$name" "$task" "$task" \
+                "SymbiYosys exited without a result, see the job log"
+        fi
         echo "$sby_file ($task)" >> "$FAILED_TASKS"
     fi
+    rm -f "$stderr"
 }
-export -f run_task
+export -f run_task write_error_report
 export FAILED_TASKS=$failed_tasks
 
 set +x
