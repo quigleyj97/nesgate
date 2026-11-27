@@ -96,15 +96,22 @@ class Mos6502Harness:
         dut = self.dut
         dut.phi1.value = 0
         dut.phi2.value = 0
+        self._idle_pins()
+        cocotb.start_soon(Clock(dut.metaclock, 2, unit="ns").start())
+        # The phases change on the metaclock's falling edge, half a cycle away
+        # from the rising edge that samples them
+        await FallingEdge(dut.metaclock)
+
+    def _idle_pins(self):
+        """Set every input pin but the clocks to its idle level. A harness for
+        a chip with other pins (like the 2A03, which has no RDY) overrides
+        this."""
+        dut = self.dut
         dut.reset_pin_n_RES.value = 1
         dut.irq_pin_n_IRQ.value = 1
         dut.nmi_pin_n_NMI.value = 1
         dut.ready_pin_RDY.value = 1
         dut.data_in.value = 0
-        cocotb.start_soon(Clock(dut.metaclock, 2, unit="ns").start())
-        # The phases change on the metaclock's falling edge, half a cycle away
-        # from the rising edge that samples them
-        await FallingEdge(dut.metaclock)
 
     async def cycle(self) -> BusCycle:
         """Run one CPU cycle, serving a read or storing a write, and record it."""
