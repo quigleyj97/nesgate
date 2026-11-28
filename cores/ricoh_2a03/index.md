@@ -22,8 +22,8 @@ the APU, DMA controller, and a test region.
     - [x] @ref length_counter
     - [x] @ref frame_counter
     - [x] @ref length_decoder
-    - [X] @ref square_channel
-    - [ ] Triangle channel
+    - [x] @ref square_channel
+    - [x] @ref triange_channel
     - [ ] Noise channel
     - [x] Envelope unit
     - [ ] DPCM channel

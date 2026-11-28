@@ -13,6 +13,7 @@ FILES="../cores/ricoh_2a03/apu/apu_counter.vhdl \
     ../cores/ricoh_2a03/apu/length_counter.vhdl \
     ../cores/ricoh_2a03/apu/envelope_unit.vhdl \
     ../cores/ricoh_2a03/apu/square_channel.vhdl \
+    ../cores/ricoh_2a03/apu/triangle_channel.vhdl \
     ../cores/ricoh_2a03/ricoh_2a03.vhdl"
 
 pushd $1
