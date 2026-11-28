@@ -11,6 +11,7 @@ ENTITIES=(
     frame_counter
     length_decoder
     length_counter
+    envelope_unit
     ricoh_2a03
 )
 

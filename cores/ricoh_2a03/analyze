@@ -11,6 +11,7 @@ FILES="../cores/ricoh_2a03/apu/apu_counter.vhdl \
     ../cores/ricoh_2a03/apu/frame_counter.vhdl \
     ../cores/ricoh_2a03/apu/length_decoder.vhdl \
     ../cores/ricoh_2a03/apu/length_counter.vhdl \
+    ../cores/ricoh_2a03/apu/envelope_unit.vhdl \
     ../cores/ricoh_2a03/ricoh_2a03.vhdl"
 
 pushd $1
