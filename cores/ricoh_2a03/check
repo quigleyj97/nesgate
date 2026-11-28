@@ -8,6 +8,8 @@ set -e
 ENTITIES=(
     apu_counter
     aclk_generator
+    frame_counter
+    length_decoder
     ricoh_2a03
 )
 

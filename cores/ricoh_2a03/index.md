@@ -20,8 +20,8 @@ the APU, DMA controller, and a test region.
     - [x] @ref aclk_generator
     - [x] @ref apu_counter
     - [ ] Length counter
-    - [ ] Length decoder
-    - [ ] Frame counter
+    - [x] @ref frame_counter
+    - [x] @ref length_decoder
     - [ ] Square channel
     - [ ] Triangle channel
     - [ ] Noise channel
