@@ -46,6 +46,9 @@ RICOH_2A03=(
     ./cores/ricoh_2a03/registers/register_decoder.vhdl
     ./cores/ricoh_2a03/registers/io_ports.vhdl
     ./cores/ricoh_2a03/registers/debug_registers.vhdl
+    ./cores/ricoh_2a03/dma/sprite_dma.vhdl
+    ./cores/ricoh_2a03/dma/address_multiplexer.vhdl
+    ./cores/ricoh_2a03/dma/dma_buffer.vhdl
     ./cores/ricoh_2a03/ricoh_2a03.vhdl
 )
 
@@ -70,6 +73,11 @@ python -m util.run_cocotb dpcm_channel cores.ricoh_2a03.apu.verify_dpcm_channel 
 python -m util.run_cocotb register_decoder cores.ricoh_2a03.registers.verify_register_decoder ./cores/ricoh_2a03/registers/register_decoder.vhdl
 python -m util.run_cocotb io_ports cores.ricoh_2a03.registers.verify_io_ports ./cores/ricoh_2a03/registers/io_ports.vhdl
 python -m util.run_cocotb debug_registers cores.ricoh_2a03.registers.verify_debug_registers ./cores/ricoh_2a03/registers/debug_registers.vhdl
+
+# DMA
+python -m util.run_cocotb sprite_dma cores.ricoh_2a03.dma.verify_sprite_dma ./cores/ricoh_2a03/apu/apu_counter.vhdl ./cores/ricoh_2a03/dma/sprite_dma.vhdl
+python -m util.run_cocotb address_multiplexer cores.ricoh_2a03.dma.verify_address_multiplexer ./cores/ricoh_2a03/dma/address_multiplexer.vhdl
+python -m util.run_cocotb dma_buffer cores.ricoh_2a03.dma.verify_dma_buffer ./cores/ricoh_2a03/dma/dma_buffer.vhdl
 
 # The whole chip, running programs
 python -m util.run_cocotb ricoh_2a03 cores.ricoh_2a03.verify_ricoh_2a03 "${MOS_6502[@]}" "${RICOH_2A03[@]}"

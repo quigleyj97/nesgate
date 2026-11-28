@@ -19,6 +19,9 @@ ENTITIES=(
     register_decoder
     io_ports
     debug_registers
+    sprite_dma
+    address_multiplexer
+    dma_buffer
     ricoh_2a03
 )
 

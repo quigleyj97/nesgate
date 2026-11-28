@@ -19,6 +19,9 @@ FILES="../cores/ricoh_2a03/apu/apu_counter.vhdl \
     ../cores/ricoh_2a03/registers/register_decoder.vhdl \
     ../cores/ricoh_2a03/registers/io_ports.vhdl \
     ../cores/ricoh_2a03/registers/debug_registers.vhdl \
+    ../cores/ricoh_2a03/dma/sprite_dma.vhdl \
+    ../cores/ricoh_2a03/dma/address_multiplexer.vhdl \
+    ../cores/ricoh_2a03/dma/dma_buffer.vhdl \
     ../cores/ricoh_2a03/ricoh_2a03.vhdl"
 
 pushd $1

@@ -27,10 +27,10 @@ the APU, DMA controller, and a test region.
     - [x] @ref noise_channel
     - [x] @ref envelope_unit
     - [x] @ref dpcm_channel
-  - [ ] DMA
-    - [ ] DMA buffer
-    - [ ] Sprite DMA controller
-    - [ ] Address mux
+  - [x] @subpage Ricoh2A03_DMA
+    - [x] @ref dma_buffer
+    - [x] @ref sprite_dma
+    - [x] @ref address_multiplexer
   - [x] @subpage Ricoh2A03_Registers
     - [x] @ref debug_registers
     - [x] @ref io_ports
