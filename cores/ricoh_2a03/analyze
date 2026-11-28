@@ -6,7 +6,8 @@ set -e
 # The 2A03 is built from the 6502 core, so import that first
 "$(dirname "$0")/../mos_6502/analyze" $1
 
-FILES="../cores/ricoh_2a03/apu/aclk_generator.vhdl \
+FILES="../cores/ricoh_2a03/apu/apu_counter.vhdl \
+    ../cores/ricoh_2a03/apu/aclk_generator.vhdl \
     ../cores/ricoh_2a03/ricoh_2a03.vhdl"
 
 pushd $1

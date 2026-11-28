@@ -6,6 +6,7 @@
 set -e
 
 ENTITIES=(
+    apu_counter
     aclk_generator
     ricoh_2a03
 )

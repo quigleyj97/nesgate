@@ -33,12 +33,14 @@ MOS_6502=(
 
 # The 2A03's own sources, in the order they're analyzed
 RICOH_2A03=(
+    ./cores/ricoh_2a03/apu/apu_counter.vhdl
     ./cores/ricoh_2a03/apu/aclk_generator.vhdl
     ./cores/ricoh_2a03/ricoh_2a03.vhdl
 )
 
 pushd $1
 # The APU
+python -m util.run_cocotb apu_counter cores.ricoh_2a03.apu.verify_apu_counter ./cores/ricoh_2a03/apu/apu_counter.vhdl
 python -m util.run_cocotb aclk_generator cores.ricoh_2a03.apu.verify_aclk_generator ./cores/ricoh_2a03/apu/aclk_generator.vhdl
 
 # The whole chip, running programs
