@@ -51,7 +51,7 @@ python -m util.run_cocotb aclk_generator cores.ricoh_2a03.apu.verify_aclk_genera
 python -m util.run_cocotb frame_counter cores.ricoh_2a03.apu.verify_frame_counter ./cores/ricoh_2a03/apu/frame_counter.vhdl
 python -m util.run_cocotb length_decoder cores.ricoh_2a03.apu.verify_length_decoder ./cores/ricoh_2a03/apu/length_decoder.vhdl
 python -m util.run_cocotb length_counter cores.ricoh_2a03.apu.verify_length_counter ./cores/ricoh_2a03/apu/apu_counter.vhdl ./cores/ricoh_2a03/apu/length_counter.vhdl
-python -m util.run_cocotb envelope_unit cores.ricoh_2a03.apu.verify_envelope_unit ./cores/ricoh_2a03/apu/apu_counter.vhdl ./cores/ricoh_2a03/apu/apu_counter.vhdl
+python -m util.run_cocotb envelope_unit cores.ricoh_2a03.apu.verify_envelope_unit ./cores/ricoh_2a03/apu/apu_counter.vhdl ./cores/ricoh_2a03/apu/apu_counter.vhdl ./cores/apu/envelope_unit.vhdl
 
 # Square 0
 python -m util.run_cocotb square_channel cores.ricoh_2a03.apu.verify_square_channel ./cores/ricoh_2a03/apu/apu_counter.vhdl ./cores/ricoh_2a03/apu/apu_counter.vhdl ./cores/ricoh_2a03/apu/square_channel.vhdl
