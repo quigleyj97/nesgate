@@ -31,10 +31,10 @@ the APU, DMA controller, and a test region.
     - [ ] DMA buffer
     - [ ] Sprite DMA controller
     - [ ] Address mux
-  - [ ] Test region
-    - [ ] Debug registers
-    - [ ] IO ports
-    - [ ] Register decoder
+  - [x] @subpage Ricoh2A03_Registers
+    - [x] @ref debug_registers
+    - [x] @ref io_ports
+    - [x] @ref register_decoder
 
 ## Caveats
 

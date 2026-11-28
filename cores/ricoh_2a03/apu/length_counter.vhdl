@@ -45,9 +45,9 @@ entity length_counter is
         --! The channel's length register write (`W4003`, `W4007`, `W400B` or
         --! `W400F`)
         write_length: in std_ulogic;
-        --! `W4015`, from the register decoder
+        --! `W4015`, from the @ref register_decoder
         write_W4015: in std_ulogic;
-        --! `R4015`, from the register decoder
+        --! `R4015`, from the @ref register_decoder
         read_R4015: in std_ulogic;
         --! The value to load, from the @ref length_decoder
         length_value: in std_ulogic_vector(7 downto 0);

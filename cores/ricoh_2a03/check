@@ -16,6 +16,9 @@ ENTITIES=(
     triangle_channel
     noise_channel
     dpcm_channel
+    register_decoder
+    io_ports
+    debug_registers
     ricoh_2a03
 )
 

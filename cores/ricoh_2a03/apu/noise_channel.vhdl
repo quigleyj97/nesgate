@@ -44,11 +44,11 @@ entity noise_channel is
         reset_RES: in std_ulogic;
         --! The internal data bus (@ref Ricoh_2A03_DB)
         bus_DB_in: in std_ulogic_vector(7 downto 0);
-        --! `W400C`, from the register decoder
+        --! `W400C`, from the @ref register_decoder
         write_W400C: in std_ulogic;
-        --! `W400E`, from the register decoder
+        --! `W400E`, from the @ref register_decoder
         write_W400E: in std_ulogic;
-        --! `W400F`, from the register decoder
+        --! `W400F`, from the @ref register_decoder
         write_W400F: in std_ulogic;
         --! @ref Ricoh_2A03_Signal_LFO1
         quarter_frame_LFO1: in std_ulogic;

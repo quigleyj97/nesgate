@@ -16,6 +16,9 @@ FILES="../cores/ricoh_2a03/apu/apu_counter.vhdl \
     ../cores/ricoh_2a03/apu/triangle_channel.vhdl \
     ../cores/ricoh_2a03/apu/noise_channel.vhdl \
     ../cores/ricoh_2a03/apu/dpcm_channel.vhdl \
+    ../cores/ricoh_2a03/registers/register_decoder.vhdl \
+    ../cores/ricoh_2a03/registers/io_ports.vhdl \
+    ../cores/ricoh_2a03/registers/debug_registers.vhdl \
     ../cores/ricoh_2a03/ricoh_2a03.vhdl"
 
 pushd $1

@@ -58,9 +58,9 @@ entity frame_counter is
         reset_RES: in std_ulogic;
         --! The internal data bus (@ref Ricoh_2A03_DB)
         bus_DB_in: in std_ulogic_vector(7 downto 0);
-        --! `W4017`, from the register decoder
+        --! `W4017`, from the @ref register_decoder
         write_W4017: in std_ulogic;
-        --! `R4015`, from the register decoder
+        --! `R4015`, from the @ref register_decoder
         read_R4015: in std_ulogic;
         --! @ref Ricoh_2A03_Signal_DMCINT
         dmc_interrupt_DMCINT: in std_ulogic;

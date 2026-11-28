@@ -50,13 +50,13 @@ entity triangle_channel is
         reset_RES: in std_ulogic;
         --! The internal data bus (@ref Ricoh_2A03_DB)
         bus_DB_in: in std_ulogic_vector(7 downto 0);
-        --! `W4008`, from the register decoder
+        --! `W4008`, from the @ref register_decoder
         write_W4008: in std_ulogic;
-        --! `W400A`, from the register decoder
+        --! `W400A`, from the @ref register_decoder
         write_W400A: in std_ulogic;
-        --! `W400B`, from the register decoder
+        --! `W400B`, from the @ref register_decoder
         write_W400B: in std_ulogic;
-        --! `W401A`, from the register decoder (debug mode only)
+        --! `W401A`, from the @ref register_decoder (debug mode only)
         write_W401A: in std_ulogic;
         --! @ref Ricoh_2A03_Signal_LFO1
         quarter_frame_LFO1: in std_ulogic;
