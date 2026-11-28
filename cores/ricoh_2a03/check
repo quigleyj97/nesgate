@@ -12,6 +12,7 @@ ENTITIES=(
     length_decoder
     length_counter
     envelope_unit
+    square_channel
     ricoh_2a03
 )
 
