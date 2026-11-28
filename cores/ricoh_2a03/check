@@ -10,6 +10,7 @@ ENTITIES=(
     aclk_generator
     frame_counter
     length_decoder
+    length_counter
     ricoh_2a03
 )
 

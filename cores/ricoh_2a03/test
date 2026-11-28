@@ -37,6 +37,7 @@ RICOH_2A03=(
     ./cores/ricoh_2a03/apu/aclk_generator.vhdl
     ./cores/ricoh_2a03/apu/frame_counter.vhdl
     ./cores/ricoh_2a03/apu/length_decoder.vhdl
+    ./cores/ricoh_2a03/apu/length_counter.vhdl
     ./cores/ricoh_2a03/ricoh_2a03.vhdl
 )
 
@@ -46,6 +47,7 @@ python -m util.run_cocotb apu_counter cores.ricoh_2a03.apu.verify_apu_counter ./
 python -m util.run_cocotb aclk_generator cores.ricoh_2a03.apu.verify_aclk_generator ./cores/ricoh_2a03/apu/aclk_generator.vhdl
 python -m util.run_cocotb frame_counter cores.ricoh_2a03.apu.verify_frame_counter ./cores/ricoh_2a03/apu/frame_counter.vhdl
 python -m util.run_cocotb length_decoder cores.ricoh_2a03.apu.verify_length_decoder ./cores/ricoh_2a03/apu/length_decoder.vhdl
+python -m util.run_cocotb length_counter cores.ricoh_2a03.apu.verify_length_counter ./cores/ricoh_2a03/apu/apu_counter.vhdl ./cores/ricoh_2a03/apu/length_counter.vhdl
 
 # The whole chip, running programs
 python -m util.run_cocotb ricoh_2a03 cores.ricoh_2a03.verify_ricoh_2a03 "${MOS_6502[@]}" "${RICOH_2A03[@]}"

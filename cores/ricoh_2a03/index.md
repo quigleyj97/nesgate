@@ -19,7 +19,7 @@ the APU, DMA controller, and a test region.
   - [~] @subpage Ricoh2A03_APU
     - [x] @ref aclk_generator
     - [x] @ref apu_counter
-    - [ ] Length counter
+    - [x] @ref length_counter
     - [x] @ref frame_counter
     - [x] @ref length_decoder
     - [ ] Square channel
