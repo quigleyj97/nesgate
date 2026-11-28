@@ -6,6 +6,7 @@
 set -e
 
 ENTITIES=(
+    aclk_generator
     ricoh_2a03
 )
 
