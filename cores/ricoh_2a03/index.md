@@ -8,7 +8,7 @@ straight through.
 ## Subpages
 
 @subpage Ricoh_2A03_clocks
-@subpage Ricoh_2A03_signals
+@subpage Ricoh_2A03_Signals
 
 ## Subunits
 
@@ -24,9 +24,9 @@ the APU, DMA controller, and a test region.
     - [x] @ref length_decoder
     - [x] @ref square_channel
     - [x] @ref triange_channel
-    - [ ] Noise channel
-    - [x] Envelope unit
-    - [ ] DPCM channel
+    - [x] @ref noise_channel
+    - [x] @ref envelope_unit
+    - [x] @ref dpcm_channel
   - [ ] DMA
     - [ ] DMA buffer
     - [ ] Sprite DMA controller
